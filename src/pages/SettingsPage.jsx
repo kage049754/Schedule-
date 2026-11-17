@@ -22,7 +22,7 @@ export default function SettingsPage() {
       document.body.appendChild(anchor)
       anchor.click()
       anchor.remove()
-      URL.revokeObjectURL(url)
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
       setNotice('Backup prepared. Keep the JSON file somewhere safe.')
     } catch (reason) {
       setError(reason?.message || 'Unable to create a backup.')
