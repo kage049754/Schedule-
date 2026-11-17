@@ -114,7 +114,8 @@ export async function updateScheduleSlots(ids, input) {
     if (hasTimeConflict(otherEntries, { startMinutes, endMinutes })) {
       throw new Error('Schedule conflict: this time overlaps an existing class. No timetable entries were changed.')
     }
-    const keepId = uniqueIds[0]
+    const existingIds = existing.map((slot) => slot.id)
+    const keepId = existing[0].id
     const roomFromSubject = kind === 'Lab' ? subject.labRoom : subject.lectureRoom
     await db.scheduleSlots.update(keepId, {
       subjectId, day, startMinutes, endMinutes, kind,
@@ -122,7 +123,7 @@ export async function updateScheduleSlots(ids, input) {
       active: existing[0].active !== false,
       updatedAt: new Date().toISOString(),
     })
-    if (uniqueIds.length > 1) await db.scheduleSlots.bulkDelete(uniqueIds.slice(1))
+    if (existingIds.length > 1) await db.scheduleSlots.bulkDelete(existingIds.slice(1))
     return keepId
   })
 }
