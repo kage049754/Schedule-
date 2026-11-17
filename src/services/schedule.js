@@ -1,4 +1,6 @@
 import { db } from '../database/db'
+import { hasTimeConflict } from './scheduleRules'
+export { mergeAdjacentSlots } from './scheduleRules'
 
 export const DAYS = [
   { value: 1, label: 'Monday', short: 'Mon' },
@@ -7,7 +9,6 @@ export const DAYS = [
   { value: 4, label: 'Thursday', short: 'Thu' },
   { value: 5, label: 'Friday', short: 'Fri' },
   { value: 6, label: 'Saturday', short: 'Sat' },
-  { value: 0, label: 'Sunday', short: 'Sun' },
 ]
 
 export async function createSubject(input) {
@@ -36,7 +37,7 @@ export async function createScheduleSlot(input) {
   const subjectId = Number(input.subjectId)
   const kind = input.kind === 'Lab' ? 'Lab' : 'Lecture'
 
-  if (!Number.isInteger(day) || day < 0 || day > 6) throw new Error('Select a valid day.')
+  if (!Number.isInteger(day) || day < 1 || day > 6) throw new Error('Select a valid day.')
   if (!Number.isInteger(startMinutes) || !Number.isInteger(endMinutes) || startMinutes < 0 || endMinutes > 1440 || endMinutes <= startMinutes) {
     throw new Error('End time must be later than start time.')
   }
@@ -47,12 +48,7 @@ export async function createScheduleSlot(input) {
     if (!subject) throw new Error('The selected subject no longer exists.')
 
     const sameDay = await db.scheduleSlots.where('day').equals(day).toArray()
-    const conflict = sameDay.find((slot) =>
-      slot.active !== false &&
-      startMinutes < slot.endMinutes &&
-      endMinutes > slot.startMinutes
-    )
-    if (conflict) {
+    if (hasTimeConflict(sameDay, { startMinutes, endMinutes })) {
       throw new Error('Schedule conflict: this time overlaps an existing class or activity. The existing entry was not changed.')
     }
 
@@ -74,6 +70,11 @@ export async function deleteScheduleSlot(id) {
   return db.scheduleSlots.delete(Number(id))
 }
 
+export async function deleteScheduleSlots(ids) {
+  const uniqueIds = [...new Set(ids.map(Number).filter(Number.isInteger))]
+  return db.scheduleSlots.bulkDelete(uniqueIds)
+}
+
 export async function deleteSubject(id) {
   const subjectId = Number(id)
   return db.transaction('rw', db.subjects, db.scheduleSlots, async () => {
@@ -82,18 +83,3 @@ export async function deleteSubject(id) {
   })
 }
 
-export function mergeAdjacentSlots(slots) {
-  const sorted = [...slots].sort((a, b) => a.startMinutes - b.startMinutes)
-  const merged = []
-  for (const slot of sorted) {
-    const previous = merged[merged.length - 1]
-    if (previous && previous.subjectId === slot.subjectId && previous.room === slot.room &&
-      previous.kind === slot.kind && previous.endMinutes === slot.startMinutes) {
-      previous.endMinutes = slot.endMinutes
-      previous.ids.push(slot.id)
-    } else {
-      merged.push({ ...slot, ids: [slot.id] })
-    }
-  }
-  return merged
-}
