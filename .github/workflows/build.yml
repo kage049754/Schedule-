@@ -124,6 +124,9 @@ jobs:
           if (!xml.includes('ScheduleWidgetProvider')) xml = xml.replace('</application>', `${receiver}\\n</application>`)
           fs.writeFileSync(file, xml)
           NODE
+          grep -q 'ScheduleWidgetProvider' android/app/src/main/AndroidManifest.xml
+          grep -q 'schedule_widget_info' android/app/src/main/AndroidManifest.xml
+          grep -q 'registerPlugin(ScheduleWidgetPlugin.class)' android/app/src/main/java/com/schedule/studentplanner/MainActivity.java
       - name: Build debug APK
         run: |
           cd android
