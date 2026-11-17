@@ -3,6 +3,7 @@ import { Download, Upload, ShieldCheck, Settings2 } from 'lucide-react'
 import { exportLocalBackup, restoreLocalBackup } from '../services/backup'
 import { checkExactAlarmAccess, getReminderSettings, openExactAlarmSettings, requestReminderPermission, saveReminderSettings, sendTestReminder } from '../services/reminders'
 import { getLocalProfile, saveLocalProfile } from '../services/profile'
+import { getModulePreferences, saveModulePreferences, MODULE_LABELS } from '../services/modulePreferences'
 
 export default function SettingsPage() {
   const fileInput = useRef(null)
@@ -14,9 +15,12 @@ export default function SettingsPage() {
   const [reminderBusy, setReminderBusy] = useState(false)
   const [profile, setProfile] = useState({ displayName: '', program: '', yearSection: '' })
   const [profileBusy, setProfileBusy] = useState(false)
+  const [modulePreferences, setModulePreferences] = useState({ order: ['dashboard', 'schedule', 'budget', 'notepad', 'tasks'], hidden: [] })
+  const [moduleBusy, setModuleBusy] = useState(false)
 
   useEffect(() => {
     getLocalProfile().then(setProfile).catch((reason) => setError(reason?.message || 'Unable to load your profile.'))
+    getModulePreferences().then(setModulePreferences).catch((reason) => setError(reason?.message || 'Unable to load module preferences.'))
     getReminderSettings().then(setReminders).catch((reason) => setError(reason?.message || 'Unable to load reminder settings.'))
     checkExactAlarmAccess().then((value) => setExactAlarm(value.exact_alarm || 'unsupported')).catch(() => setExactAlarm('unknown'))
   }, [])
@@ -30,6 +34,36 @@ export default function SettingsPage() {
       setNotice('Profile saved on this device. Dashboard greeting updated.')
     } catch (reason) { setError(reason?.message || 'Unable to save your profile.') }
     finally { setProfileBusy(false) }
+  }
+
+
+  function moveModule(id, direction) {
+    setModulePreferences((current) => {
+      const order = [...current.order]
+      const index = order.indexOf(id)
+      const nextIndex = index + direction
+      if (index < 0 || nextIndex < 0 || nextIndex >= order.length) return current
+      ;[order[index], order[nextIndex]] = [order[nextIndex], order[index]]
+      return { ...current, order }
+    })
+  }
+
+  function toggleModule(id, visible) {
+    if (id === 'dashboard') return
+    setModulePreferences((current) => ({
+      ...current,
+      hidden: visible ? current.hidden.filter((item) => item !== id) : [...new Set([...current.hidden, id])],
+    }))
+  }
+
+  async function handleSaveModules() {
+    setModuleBusy(true); setError(''); setNotice('')
+    try {
+      const saved = await saveModulePreferences(modulePreferences)
+      setModulePreferences(saved)
+      setNotice('Bottom navigation preferences saved.')
+    } catch (reason) { setError(reason?.message || 'Unable to save module preferences.') }
+    finally { setModuleBusy(false) }
   }
 
   async function handleSaveReminders() {
@@ -130,6 +164,18 @@ export default function SettingsPage() {
           <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Year and section</span><input maxLength={60} value={profile.yearSection || ''} onChange={(e) => setProfile({ ...profile, yearSection: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="e.g. 2nd Year · Section 2-6" /></label>
           <button disabled={profileBusy} className="w-full rounded-xl bg-forest-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{profileBusy ? 'Saving…' : 'Save profile'}</button>
         </form>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+        <div><h3 className="font-semibold text-slate-800">Bottom navigation</h3><p className="mt-1 text-xs text-slate-500">Choose which modules appear and change their order. Dashboard stays available. Hidden modules remain accessible from saved routes and Dashboard links.</p></div>
+        <div className="space-y-2">
+          {modulePreferences.order.map((id, index) => <div key={id} className="flex items-center gap-2 rounded-xl border border-slate-100 p-3">
+            <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-slate-700">{MODULE_LABELS[id]}</p><label className="mt-1 inline-flex items-center gap-2 text-xs text-slate-500"><input type="checkbox" checked={!modulePreferences.hidden.includes(id)} disabled={id === 'dashboard'} onChange={(e) => toggleModule(id, e.target.checked)} /> Show in navigation</label></div>
+            <button type="button" disabled={index === 0} onClick={() => moveModule(id, -1)} aria-label={`Move ${MODULE_LABELS[id]} up`} className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs disabled:opacity-30">Up</button>
+            <button type="button" disabled={index === modulePreferences.order.length - 1} onClick={() => moveModule(id, 1)} aria-label={`Move ${MODULE_LABELS[id]} down`} className="rounded-lg border border-slate-200 px-2 py-1.5 text-xs disabled:opacity-30">Down</button>
+          </div>)}
+        </div>
+        <button type="button" disabled={moduleBusy} onClick={handleSaveModules} className="w-full rounded-xl bg-forest-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{moduleBusy ? 'Saving…' : 'Save navigation'}</button>
       </section>
 
       <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
