@@ -7,7 +7,7 @@ export function buildReminderCandidates({ slots = [], subjects = [], tasks = [],
   const result = []
   const lead = Math.max(0, Math.min(120, Number(settings.leadMinutes) || 0))
   const taskLeadDays = Math.max(0, Math.min(7, Number(settings.taskLeadDays) || 0))
-  const taskReminderTime = /^([01]\\d|2[0-3]):[0-5]\\d$/.test(settings.taskReminderTime || '') ? settings.taskReminderTime : '08:00'
+  const taskReminderTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(settings.taskReminderTime || '') ? settings.taskReminderTime : '08:00'
   if (settings.classesEnabled) {
     for (let offset = 0; offset < days; offset += 1) {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
