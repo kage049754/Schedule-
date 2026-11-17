@@ -55,7 +55,7 @@
 - [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
-- [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.
+- [ ] Native Android home-screen widget source and Capacitor bridge added; verify Android compilation, launcher placement, refresh behavior, and physical-device display.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
@@ -65,7 +65,7 @@
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
 - Settings: local backup export/restore and class/task reminder controls are implemented; profile, module visibility/order, appearance, and richer alarm controls remain.
-- Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
+- Android: CI generates the Capacitor project and successfully builds a debug APK; native widget source is now injected into the generated project and awaits its first verified build. Physical-device install/display QA remains.
 
 ### Next actions selected from current gaps
 1. Finish the current CI cycle, inspect unit-test and Android Gradle logs, download the newest APK artifact, and verify its contents/checksum.
