@@ -16,10 +16,10 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 
 | Phase | Module | Function / behavior | Status |
 |---|---|---|---|
-| 0 | Foundation | React/Vite/Tailwind/Capacitor setup, scripts, conventions | In progress |
-| 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Planned |
-| 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Planned |
-| 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Planned |
+| 0 | Foundation | React/Vite/Tailwind/Capacitor setup, scripts, conventions | Complete (CI verified) |
+| 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Initial shell complete; polish pending |
+| 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Initial local summaries implemented; finance period logic pending |
+| 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Initial timetable and subject CRUD implemented; editing/activities/tests pending |
 | 4 | Class reminders | Local notifications before classes; configurable lead time | Planned |
 | 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Planned |
 | 6 | Spending limits | Category budgets and spent/remaining indicators | Planned |
@@ -77,10 +77,10 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 - Export local records to a user-selected file.
 - Validate imported data before restoring. Clearing app data or uninstalling can erase local records if no backup exists.
 
-## Step-by-step execution policy
+## Engineering research and independent decisions\n\nResearch comparable open-source projects and official documentation when they can improve a milestone. Inspect source code and licenses where accessible; use ideas and patterns, not unlicensed code copying. Evaluate each candidate against offline-only operation, Android packaging, accessibility, maintainability, and the no-cost constraint. Record meaningful findings and design decisions in [docs/ENGINEERING_RESEARCH.md](docs/ENGINEERING_RESEARCH.md). The next task should be selected from actual gaps, bugs, and dependencies in this repository—not only from a user prompt.\n\n## Step-by-step execution policy
 For each phase: inspect current code → implement a bounded feature → run checks/build → inspect actual CI result and logs → fix failures → rebuild → verify outputs → update this roadmap and IMPLEMENTATION_STATUS.md → continue to the next phase.
 
-Do not mark a phase complete because code was merely written. Build/test evidence is required. Physical-device testing is separate from CI/emulator checks.
+Do not mark a phase complete because code was merely written. Build/test evidence is required. Physical-device testing is separate from CI/emulator checks. Before each milestone, inspect the current repo, research relevant documentation/projects, and use available code-review/testing tools or skills where applicable. Keep the project strictly offline: no backend, accounts, cloud sync, or runtime network dependency.
 
 ## Current progress
-See IMPLEMENTATION_STATUS.md.
+See IMPLEMENTATION_STATUS.md.\n\n## Engineering research\n\nSee [Engineering Research](docs/ENGINEERING_RESEARCH.md) for comparable projects reviewed, technical decisions, and the independent development protocol.\n
