@@ -139,8 +139,10 @@ export async function deleteScheduleSlots(ids) {
 
 export async function deleteSubject(id) {
   const subjectId = Number(id)
-  return db.transaction('rw', db.subjects, db.scheduleSlots, async () => {
+  return db.transaction('rw', db.subjects, db.scheduleSlots, db.notes, db.tasks, async () => {
     await db.scheduleSlots.where('subjectId').equals(subjectId).delete()
+    await db.notes.where('subjectId').equals(subjectId).modify({ subjectId: null })
+    await db.tasks.where('subjectId').equals(subjectId).modify({ subjectId: null })
     await db.subjects.delete(subjectId)
   })
 }
