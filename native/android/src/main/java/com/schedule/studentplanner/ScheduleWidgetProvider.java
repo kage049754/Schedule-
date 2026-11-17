@@ -25,7 +25,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_class_details, classDetails);
         views.setTextViewText(R.id.widget_class_countdown, countdown(classStartAt));
         views.setTextViewText(R.id.widget_task_title, taskTitle);
-        views.setTextViewText(R.id.widget_task_due, taskDueDate.isEmpty() ? "No upcoming deadline" : "Due " + taskDueDate);
+        views.setTextViewText(R.id.widget_task_due, taskDueDate.isEmpty() ? "No upcoming deadline" : taskDueDate);
 
         Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         if (launchIntent != null) {
