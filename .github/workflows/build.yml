@@ -25,6 +25,10 @@ jobs:
         run: npm install
       - name: Run unit tests
         run: npm test
+      - name: Report dependency audit
+        run: |
+          npm audit --json > npm-audit.json || true
+          node -e "const a=require('./npm-audit.json'); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, packages:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable}))}, null, 2))"
       - name: Build production bundle
         run: npm run build
       - name: Verify output
@@ -34,4 +38,10 @@ jobs:
         with:
           name: schedule-web-build
           path: dist/
+          if-no-files-found: error
+      - name: Upload dependency audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: schedule-dependency-audit
+          path: npm-audit.json
           if-no-files-found: error
