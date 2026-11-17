@@ -2,7 +2,7 @@
 
 ## Current milestone: Phase 5–9 — Budget, Savings, Notepad, and Tasks
 
-**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 16 tests verified in CI  
+**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 20 tests verified in CI  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -18,7 +18,12 @@
 - [x] Transaction-protected overlap prevention.
 - [x] GitHub Actions production web build and artifact upload.
 - [x] Earlier verified web build: [Run #20](https://github.com/kage049754/Schedule-/actions/runs/44149371333), successful.
-- [x] Added Settings screen with local JSON backup export and validated restore flow; import warns that existing local records will be replaced.\n- [x] Implemented Budget/Savings CRUD for allowance, income, expenses, categories, goals, deposits, and withdrawals.\n- [x] Added daily/weekly/monthly category spending limits with current-period spent, remaining, and over-limit indicators.\n- [x] Added period-aware daily/weekly/monthly allowance ranges and corrected dashboard balance to include only allowances active today.\n- [x] Added Notepad with personal/lecture/subject-linked notes, search, editing, pinning, archive/restore, and deletion.\n- [x] Added Tasks with due dates, priority, subject linking, pending/overdue/completed views, checklists, and completion/deletion flows.
+- [x] Added Settings screen with local JSON backup export and validated restore flow; import warns that existing local records will be replaced.
+- [x] Implemented Budget/Savings CRUD for allowance, income, expenses, categories, goals, deposits, and withdrawals.
+- [x] Added daily/weekly/monthly category spending limits with current-period spent, remaining, and over-limit indicators.
+- [x] Added period-aware daily/weekly/monthly allowance ranges and corrected dashboard balance to include only allowances active today.
+- [x] Added Notepad with personal/lecture/subject-linked notes, search, editing, pinning, archive/restore, and deletion.
+- [x] Added Tasks with due dates, priority, subject linking, pending/overdue/completed views, checklists, and completion/deletion flows.
 
 ### Research and engineering improvements in this iteration
 - [x] Reviewed Local Study OS for offline academic planning, task prioritization, and JSON backup patterns.
@@ -42,7 +47,14 @@
 - [x] Job logs inspected; npm reported 13 dependency vulnerabilities (2 moderate, 11 high), which are now a tracked security task.
 - [x] This is a web build artifact, not an APK.
 
-### Newly requested roadmap items\n- [x] Implemented local Android class and deadline notifications with configurable class lead time and per-feature toggles.\n- [x] Added Android reminder vibration-channel selection, test alert, notification permission handling, and exact-alarm settings access.\n- [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.\n- [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.\n- [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.\n\n### Current feature status
+### Newly requested roadmap items
+- [x] Implemented local Android class and deadline notifications with configurable class lead time and per-feature toggles.
+- [x] Added Android reminder vibration-channel selection, test alert, notification permission handling, and exact-alarm settings access.
+- [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
+- [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.
+- [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
+
+### Current feature status
 - Dashboard: local class/task/finance summaries are wired; allowance totals are period-aware. Date-scoped finance reporting remains.
 - Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and period reports remain.
