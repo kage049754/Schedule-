@@ -22,6 +22,8 @@ export async function saveReminderSettings(settings) {
     classesEnabled: Boolean(settings.classesEnabled),
     tasksEnabled: Boolean(settings.tasksEnabled),
     leadMinutes: Math.max(0, Math.min(120, Number(settings.leadMinutes) || 0)),
+    taskLeadDays: Math.max(0, Math.min(7, Number(settings.taskLeadDays) || 0)),
+    taskReminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(settings.taskReminderTime || '') ? settings.taskReminderTime : '08:00',
     vibrationEnabled: Boolean(settings.vibrationEnabled),
   }
   await db.settings.put({ key: 'reminders', value: safe, updatedAt: new Date().toISOString() })
