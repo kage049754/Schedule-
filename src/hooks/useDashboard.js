@@ -23,7 +23,11 @@ export function useDashboard() {
       },
       error: (reason) => setError(reason?.message || 'Unable to read local dashboard data.'),
     })
-    return () => subscription.unsubscribe()
+    const refreshClockDependentData = () => {
+      getDashboardSnapshot().then((value) => { setSnapshot(value); setError('') }).catch((reason) => setError(reason?.message || 'Unable to refresh local dashboard data.'))
+    }
+    const interval = setInterval(refreshClockDependentData, 60_000)
+    return () => { subscription.unsubscribe(); clearInterval(interval) }
   }, [])
 
   return { ...snapshot, error }
