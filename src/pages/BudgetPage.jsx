@@ -7,6 +7,7 @@ import { toLocalDateKey } from '../utils/dates'
 import { addAllowance, addIncome, addExpense, addExpenseCategory, addSavingsGoal, addSavingsEntry, deleteMoneyRecord } from '../services/budget'
 import CategoryLimits from './CategoryLimits'
 import { calculateFinanceSummary } from '../services/dashboardRules'
+import { summarizeBudgetTransactions } from '../services/budgetRules'
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-forest-500 focus:ring-2 focus:ring-forest-100'
 const today = toLocalDateKey()
@@ -25,6 +26,7 @@ export default function BudgetPage() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [reportPeriod, setReportPeriod] = useState('month')
   const [allowance, setAllowance] = useState({ amount: '', period: 'weekly' })
   const [income, setIncome] = useState({ amount: '', source: '', date: today })
   const [expense, setExpense] = useState({ amount: '', description: '', categoryId: '', date: today, newCategory: '' })
@@ -45,6 +47,8 @@ export default function BudgetPage() {
     const summary = calculateFinanceSummary({ allowances: data.allowances, income: data.income, expenses: data.expenses, savingsEntries: data.entries }, today)
     return { allowance: summary.allowanceTotal, income: summary.incomeTotal, expenses: summary.expenseTotal, balance: summary.availableBalance, saved: summary.savingsTotal }
   }, [data, today])
+
+  const report = useMemo(() => summarizeBudgetTransactions(data.income, data.expenses, reportPeriod), [data, reportPeriod])
 
   const goalBalances = useMemo(() => new Map(data.goals.map((item) => [item.id, data.entries.filter((entry) => entry.goalId === item.id).reduce((sum, entry) => sum + (entry.type === 'withdrawal' ? -entry.amount : entry.amount), 0)])), [data])
 
@@ -118,9 +122,23 @@ export default function BudgetPage() {
       {data.goals.length === 0 ? <p className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">Create a goal to track progress toward something important.</p> : data.goals.map((item) => { const saved = goalBalances.get(item.id) || 0; const percent = Math.min(100, Math.round(saved / item.targetAmount * 100)); return <div key={item.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-soft"><div className="flex items-start justify-between gap-2"><div><p className="font-semibold text-slate-800">{item.title}</p><p className="text-xs text-slate-500">{formatPeso(saved)} of {formatPeso(item.targetAmount)}</p></div><button aria-label={`Delete ${item.title}`} onClick={() => remove('savingsGoals', item.id, 'savings goal')} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={15} /></button></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-forest-600" style={{ width: `${percent}%` }} /></div><p className="mt-1 text-right text-[11px] text-slate-500">{percent}% saved</p></div> })}
     </section>
 
-    <section className="space-y-3"><h3 className="font-semibold text-slate-800">Recent transactions</h3>
-      {[...data.expenses.map((item) => ({ ...item, kind: 'Expense', label: item.description || 'Expense', sign: -1, table: 'expenses' })), ...data.income.map((item) => ({ ...item, kind: 'Income', label: item.source, sign: 1, table: 'income' }))].sort((a,b) => String(b.date).localeCompare(String(a.date))).slice(0,12).map((item) => <div key={`${item.table}-${item.id}`} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3"><div className={`grid h-9 w-9 place-items-center rounded-xl ${item.sign > 0 ? 'bg-forest-50 text-forest-700' : 'bg-amber-50 text-amber-700'}`}>{item.sign > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-800">{item.label}</p><p className="text-xs text-slate-400">{item.kind} · {item.date}</p></div><p className={`text-sm font-semibold ${item.sign > 0 ? 'text-forest-700' : 'text-slate-700'}`}>{item.sign > 0 ? '+' : '−'}{formatPeso(item.amount)}</p><button aria-label={`Delete ${item.label}`} onClick={() => remove(item.table, item.id, 'transaction')} className="p-1 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button></div>)}
-      {data.expenses.length + data.income.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-slate-500">Income and expenses will appear here.</p>}
+    <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+      <div><h3 className="font-semibold text-slate-800">Money report</h3><p className="mt-1 text-xs text-slate-500">{report.label}{report.startDate ? ` · ${report.startDate} to ${report.endDate}` : ' · all recorded dates'}</p></div>
+      <div className="grid grid-cols-4 gap-1 rounded-xl bg-slate-50 p-1">
+        {['today', 'week', 'month', 'all'].map((period) => <button key={period} type="button" onClick={() => setReportPeriod(period)} className={`rounded-lg px-1 py-2 text-xs font-semibold capitalize ${reportPeriod === period ? 'bg-forest-700 text-white' : 'text-slate-500'}`}>{period === 'all' ? 'All time' : period === 'week' ? 'Week' : period === 'month' ? 'Month' : 'Today'}</button>)}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <div className="rounded-xl bg-forest-50 p-3"><p className="text-[10px] text-forest-700">Income</p><p className="mt-1 text-sm font-bold text-forest-900">{formatPeso(report.incomeTotal)}</p></div>
+        <div className="rounded-xl bg-amber-50 p-3"><p className="text-[10px] text-amber-800">Expenses</p><p className="mt-1 text-sm font-bold text-amber-950">{formatPeso(report.expenseTotal)}</p></div>
+        <div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] text-slate-500">Net</p><p className={`mt-1 text-sm font-bold ${report.net >= 0 ? 'text-forest-800' : 'text-red-700'}`}>{formatPeso(report.net)}</p></div>
+      </div>
+      <p className="text-xs text-slate-400">{report.transactionCount} transaction{report.transactionCount === 1 ? '' : 's'} in this range</p>
+    </section>
+
+    <section className="space-y-3"><h3 className="font-semibold text-slate-800">Transactions · {report.label}</h3>
+      {report.transactions.slice(0, 12).map((item) => <div key={`${item.table}-${item.id}`} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-3"><div className={`grid h-9 w-9 place-items-center rounded-xl ${item.sign > 0 ? 'bg-forest-50 text-forest-700' : 'bg-amber-50 text-amber-700'}`}>{item.sign > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-800">{item.label}</p><p className="text-xs text-slate-400">{item.kind} · {item.date}</p></div><p className={`text-sm font-semibold ${item.sign > 0 ? 'text-forest-700' : 'text-slate-700'}`}>{item.sign > 0 ? '+' : '−'}{formatPeso(item.amount)}</p><button aria-label={`Delete ${item.label}`} onClick={() => remove(item.table, item.id, 'transaction')} className="p-1 text-slate-400 hover:text-red-600"><Trash2 size={14} /></button></div>)}
+      {report.transactionCount === 0 && <p className="rounded-xl bg-white p-4 text-sm text-slate-500">No income or expenses in this date range.</p>}
+      {report.transactionCount > 12 && <p className="text-center text-xs text-slate-400">Showing the latest 12 of {report.transactionCount} transactions.</p>}
     </section>
     <p className="flex items-center gap-2 text-xs text-slate-400"><PiggyBank size={14} /> Amounts are stored as integer centavos on this device.</p>
   </div>
