@@ -33,7 +33,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 12 | Backup and recovery | Local JSON export/import with validation | Planned |
 | 13 | QA | Offline, persistence, calculation, conflict, date and accessibility checks | Planned |
 | 14 | Android packaging | Capacitor Android project, identity, permissions, icons | CI-generated debug APK builds and artifact verification passed |
-| 15 | Release | CI build, APK generation, artifact integrity and device install verification | Latest debug APK built and extracted in Run #160; physical install and widget placement remain |
+| 15 | Release | CI build, APK generation, artifact integrity and device install verification | Latest debug APK built and extracted in Run #169; physical install and widget placement remain |
 | 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, vibration, Do Not Disturb behavior, reboot rescheduling, battery restrictions, and widget refresh on supported Android versions | Planned |
 
 ### Detailed expected behavior
