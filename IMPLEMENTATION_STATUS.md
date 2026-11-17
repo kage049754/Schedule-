@@ -12,7 +12,9 @@
 - [x] Dexie.js local schema for profile, subjects, schedule slots, activities, allowance, income, expenses, categories, savings, notes, tasks, checklists, and settings.
 - [x] Local PHP peso formatter and date/time helpers.
 - [x] Local JSON backup export and validation/restore service.
-- [x] Dashboard local queries for today's classes, pending/overdue tasks, balance, and savings.
+- [x] Dashboard local live queries for today's classes, pending/overdue tasks, balance, savings, and recent income/expense activity.
+- [x] Added cross-module Dexie live-query synchronization: Budget changes recalculate Dashboard totals/activity and category limits; schedule/task/subject changes refresh dependent views and local reminders.
+- [x] Documented local data ownership, module dependencies, reminder timing, and the planned widget contract in docs/DATA_SYNC.md.
 - [x] Subject creation with duplicate-code protection.
 - [x] Weekly schedule editor with Lecture/Lab, room selection, and adjacent matching slot merging.
 - [x] Transaction-protected overlap prevention.
@@ -55,16 +57,16 @@
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
-- Dashboard: local class/task/finance summaries are wired; allowance totals are period-aware. Date-scoped finance reporting remains.
+- Dashboard: reactive class/task/finance summaries, recent income/expense activity, and period-aware allowance totals are wired. Date-scoped finance reporting remains.
 - Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
-- Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and period reports remain.
+- Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits are date-scoped and Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
 - Settings: local backup export/restore UI is implemented; profile, module visibility/order, appearance, and reminder controls remain.
 - Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
 ### Next actions selected from current gaps
-1. Verify the Settings backup/restore change with a completed GitHub Actions run; fix any build failures from actual logs.
+1. Verify cross-module live synchronization with a completed GitHub Actions run; fix any build failures from actual logs.
 2. Inspect the exact dependency advisories and remediate safely without forcing incompatible major upgrades; pin reproducible dependencies with a lockfile.
 3. Implement Budget and Savings ledger with period-aware allowance, category limits, and integer-centavo calculations.
 4. Add schedule edit/update operations and personal activities. Then implement local class/deadline notifications, alarm-style vibration/snooze behavior, reboot rescheduling, and the native Android home-screen widget.
