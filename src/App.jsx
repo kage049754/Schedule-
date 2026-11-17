@@ -2,6 +2,7 @@ import { NavLink, Route, Routes, Navigate, Link } from 'react-router-dom'
 import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Bell, Plus, GraduationCap, Clock, AlertCircle } from 'lucide-react'
 import { useDashboard } from './hooks/useDashboard'
 import { formatPeso } from './utils/money'
+import SchedulePage from './pages/SchedulePage'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -112,7 +113,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/schedule" element={<Placeholder title="Schedule" detail="Your weekly class timetable, subjects, rooms, lecture and lab periods, and activities." icon={CalendarDays} />} />
+        <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/budget" element={<Placeholder title="Budget" detail="Record allowance, income, expenses, category limits, and savings goals." icon={Wallet} />} />
         <Route path="/notepad" element={<Placeholder title="Notepad" detail="Organize personal, lecture, and subject-linked notes." icon={NotebookPen} />} />
         <Route path="/tasks" element={<Placeholder title="Tasks" detail="Track assignments, deadlines, priorities, and checklists." icon={CheckSquare} />} />
