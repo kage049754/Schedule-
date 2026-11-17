@@ -2,7 +2,7 @@
 
 ## Current milestone: Live synchronization, reminders, native widget, and APK verification
 
-**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 30 tests pass in CI  
+**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 30 tests pass in the latest verified CI; date-filtered finance report tests are now added and awaiting CI  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -63,7 +63,7 @@
 ### Current feature status
 - Dashboard: reactive class, activity, task, and finance summaries; recent income/expense activity; and period-aware allowance totals are wired. Date-scoped finance reporting remains.
 - Schedule: weekly timetable, subject/class edits, personal activity CRUD, cross-conflict checks, and cascade-safe subject unlinking are implemented.
-- Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits are date-scoped and Dashboard consumes the same live ledger.
+- Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and live today/week/month/all-time reports are date-scoped; Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
 - Settings: local backup export/restore and class/activity/task reminder controls are implemented; notification actions now include Snooze 10 min and Dismiss. Profile, module visibility/order, appearance, and custom alarm sound remain.
