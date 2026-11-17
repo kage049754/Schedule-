@@ -27,7 +27,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 ## Finance rules
 
 - Money is stored as integer centavos. UI input in pesos is converted before writing.
-- The Dashboard available balance is active allowance for the current date plus recorded income minus recorded expenses.
+- The Budget and Dashboard available balance use the same calculation: active allowance for the current date plus income and expenses dated today or earlier. Future-dated transactions remain visible in totals/history but do not change today's available balance.
 - Dashboard recent money activity is derived from the same income and expense rows as Budget.
 - Category limit usage is recalculated from expenses whose dates fall inside the limit's saved period.
 - Savings progress is derived from deposits and withdrawals; savings are not automatically treated as expenses.
