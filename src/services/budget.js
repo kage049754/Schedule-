@@ -57,5 +57,13 @@ export async function addSavingsEntry({ goalId, amount, type = 'deposit', date =
 export async function deleteMoneyRecord(tableName, id) {
   const allowed = ['allowances', 'income', 'expenses', 'savingsGoals']
   if (!allowed.includes(tableName)) throw new Error('Unsupported record type.')
-  return db[tableName].delete(Number(id))
+  const recordId = Number(id)
+  if (!Number.isInteger(recordId) || recordId <= 0) throw new Error('Invalid record identifier.')
+  if (tableName === 'savingsGoals') {
+    return db.transaction('rw', db.savingsGoals, db.savingsEntries, async () => {
+      await db.savingsEntries.where('goalId').equals(recordId).delete()
+      await db.savingsGoals.delete(recordId)
+    })
+  }
+  return db[tableName].delete(recordId)
 }
