@@ -4,6 +4,7 @@ import { getDashboardSnapshot } from '../services/dashboard'
 
 const emptySnapshot = {
   todaysClasses: [],
+  todaysActivities: [],
   pendingTasks: [],
   pendingTaskCount: 0,
   overdueTaskCount: 0,
