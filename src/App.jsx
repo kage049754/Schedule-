@@ -192,7 +192,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </main>
-    <nav className={`fixed inset-x-0 bottom-0 z-10 mx-auto grid max-w-xl ${navGridClass} border-t border-slate-100 bg-white/95 px-2 pb-[max(.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+    <nav className={`fixed inset-x-0 bottom-0 z-10 mx-auto grid max-w-xl ${navGridClass} border-t border-slate-100 bg-white/95 px-2 pb-[max(.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur`}>
       {visibleNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium transition ${isActive ? 'text-forest-700' : 'text-slate-400'}`}>
         {({ isActive }) => <><Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} /><span>{label}</span></>}
       </NavLink>)}
