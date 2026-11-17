@@ -58,7 +58,7 @@ function formatTime(minutes = 0) {
 }
 
 function Dashboard() {
-  const { todaysClasses, pendingTasks, pendingTaskCount, overdueTaskCount, availableBalance, savingsTotal, recentTransactions = [], error } = useDashboard()
+  const { todaysClasses, todaysActivities = [], pendingTasks, pendingTaskCount, overdueTaskCount, availableBalance, savingsTotal, recentTransactions = [], error } = useDashboard()
   return (
     <div className="space-y-6">
       <section>
@@ -86,6 +86,15 @@ function Dashboard() {
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-forest-50 text-forest-700"><Clock size={18} /></div>
             <div className="min-w-0 flex-1"><p className="truncate font-semibold text-slate-800">{slot.subject?.code || slot.subject?.name || 'Class'}</p><p className="text-xs text-slate-500">{slot.room || 'Room not set'} · {slot.kind || 'Class'}</p></div>
             <span className="text-right text-xs font-medium text-slate-500">{formatTime(slot.startMinutes)}–{formatTime(slot.endMinutes)}</span>
+          </div>
+        ))}
+      </section>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-800">Today's activities</h3><Link to="/schedule" className="text-xs font-semibold text-forest-700">Open schedule</Link></div>
+        {todaysActivities.length === 0 ? <EmptyRow text="No personal activities scheduled for today." /> : todaysActivities.map((activity) => (
+          <div key={activity.id} className="flex items-center gap-3 rounded-2xl border border-amber-100 bg-white p-3 shadow-soft">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-800"><Clock size={16} /></div>
+            <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-slate-800">{activity.title}</p><p className="text-xs text-slate-400">{activity.location || 'Personal activity'} · {formatTime(activity.startMinutes)}</p></div>
           </div>
         ))}
       </section>
