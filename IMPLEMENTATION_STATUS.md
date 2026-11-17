@@ -1,8 +1,8 @@
 # Implementation status
 
-## Current milestone: Phase 3 — Schedule reliability and research-driven QA
+## Current milestone: Phase 11–12 — Settings and local backup
 
-**Status:** Research-driven schedule fixes and automated rule tests verified by GitHub Actions  
+**Status:** Schedule reliability verified; local backup Settings UI implemented and awaiting CI verification  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -18,6 +18,7 @@
 - [x] Transaction-protected overlap prevention.
 - [x] GitHub Actions production web build and artifact upload.
 - [x] Earlier verified web build: [Run #20](https://github.com/kage049754/Schedule-/actions/runs/44149371333), successful.
+- [x] Added Settings screen with local JSON backup export and validated restore flow; import warns that existing local records will be replaced.
 
 ### Research and engineering improvements in this iteration
 - [x] Reviewed Local Study OS for offline academic planning, task prioritization, and JSON backup patterns.
@@ -33,6 +34,8 @@
 
 ### Current verification
 - [x] [Run #27](https://github.com/kage049754/Schedule-/actions/runs/44149678881) completed successfully.
+- [x] [Run #31](https://github.com/kage049754/Schedule-/actions/runs/44149872028) completed successfully after the dependency-audit workflow was added; all four tests, production build, output verification, and both artifact uploads passed.
+- [x] Inspected Run #31 logs and confirmed the audit report lists 13 findings (2 moderate, 11 high); no dependency remediation is claimed yet.
 - [x] Four schedule rule tests passed: adjacency, overlap rejection, inactive-slot handling, and merge criteria.
 - [x] Vite production build succeeded; `dist/index.html` was verified.
 - [x] `schedule-web-build` artifact uploaded (100,099 bytes; SHA-256 `5cea600dc3db2ea9d958d2828fb3229c3598ce843d2f78f1adf67ccfe30eed99`).
@@ -45,17 +48,18 @@
 - Budget/Savings: data schema and formatting foundations exist; user-facing CRUD and accurate period ledger calculations remain.
 - Notepad: schema exists; user-facing editor/search/subject linking remain.
 - Tasks: schema exists; user-facing assignment/checklist/deadline flows remain.
-- Settings: route is a placeholder; user-facing customization and backup controls remain.
+- Settings: local backup export/restore UI is implemented; profile, module visibility/order, appearance, and reminder controls remain.
 - Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
 ### Next actions selected from current gaps
-1. Inspect and remediate the 13 npm dependency audit findings; retain compatible, maintained dependencies and verify with a fresh audit.
-2. Add schedule edit/update operations and activity entries; add reminder configuration and Android notification handling.
-3. Implement Budget and Savings ledger with period-aware allowance and integer-centavo calculations.
-4. Implement subject-linked Notepad and Tasks.
-5. Implement Settings, module customization, backup UI, and language selection only after a language decision.
-6. Add full offline, accessibility, calculation, persistence, and Android flow tests.
-7. Generate and verify a real APK, then separately request physical-device testing.
+1. Verify the Settings backup/restore change with a completed GitHub Actions run; fix any build failures from actual logs.
+2. Inspect the exact dependency advisories and remediate safely without forcing incompatible major upgrades; pin reproducible dependencies with a lockfile.
+3. Implement Budget and Savings ledger with period-aware allowance, category limits, and integer-centavo calculations.
+4. Add schedule edit/update operations, personal activities, and local class reminder configuration/Android notification handling.
+5. Implement subject-linked Notepad and Tasks with checklist/deadline flows.
+6. Expand Settings with profile and module customization; keep language selection open until the user decides.
+7. Add full offline, accessibility, calculation, persistence, and Android flow tests.
+8. Generate and verify a real APK, then separately request physical-device testing.
 
 ### Important limitations
 - No backend, login, cloud database, or sync is part of this project.
