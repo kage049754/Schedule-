@@ -6,6 +6,8 @@ import { buildReminderCandidates, reminderDefaults, stableNotificationId } from 
 const CLASS_ID_BASE = 1000000
 const TASK_ID_BASE = 2000000
 const ACTIVITY_ID_BASE = 3000000
+const SNOOZE_ID_BASE = 4000000
+const REMINDER_ACTION_TYPE = 'schedule-reminder-actions'
 const REMINDER_CHANNEL_VIBRATE = 'schedule-reminders-vibrate'
 const REMINDER_CHANNEL_SILENT = 'schedule-reminders-silent'
 
@@ -59,6 +61,8 @@ export async function sendTestReminder(vibrationEnabled = true) {
     id: 1900001,
     title: 'Schedule reminder test',
     body: 'Your local notifications are working on this device.',
+    actionTypeId: REMINDER_ACTION_TYPE,
+    autoCancel: true,
     ...(channelId ? { channelId } : {}),
     schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true },
   }] })
@@ -80,6 +84,43 @@ async function ensureReminderChannel(vibrationEnabled) {
   return channelId
 }
 
+
+export async function initializeReminderActionListener() {
+  if (!Capacitor.isNativePlatform()) return null
+  await LocalNotifications.registerActionTypes({
+    types: [{
+      id: REMINDER_ACTION_TYPE,
+      actions: [
+        { id: 'snooze-10', title: 'Snooze 10 min' },
+        { id: 'dismiss', title: 'Dismiss', destructive: true },
+      ],
+    }],
+  })
+  return LocalNotifications.addListener('localNotificationActionPerformed', async ({ actionId, notification }) => {
+    if (!notification?.id) return
+    if (actionId === 'dismiss') {
+      await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: notification.id }] })
+      return
+    }
+    if (actionId !== 'snooze-10') return
+    const settings = await getReminderSettings()
+    const channelId = await ensureReminderChannel(settings.vibrationEnabled)
+    await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: notification.id }] })
+    const id = stableNotificationId('snooze-' + notification.id + '-' + Date.now(), SNOOZE_ID_BASE)
+    await LocalNotifications.schedule({
+      notifications: [{
+        id,
+        title: notification.title || 'Schedule reminder',
+        body: notification.body || 'Reminder snoozed for 10 minutes.',
+        ...(channelId ? { channelId } : {}),
+        actionTypeId: REMINDER_ACTION_TYPE,
+        autoCancel: true,
+        schedule: { at: new Date(Date.now() + 10 * 60 * 1000), allowWhileIdle: true },
+      }],
+    })
+  })
+}
+
 export async function rescheduleLocalReminders(settingsOverride = null) {
   if (!Capacitor.isNativePlatform()) return { scheduled: 0, skipped: true }
   const settings = settingsOverride || await getReminderSettings()
@@ -97,11 +138,14 @@ export async function rescheduleLocalReminders(settingsOverride = null) {
   const [slots, activities, subjects, tasks] = await Promise.all([
     db.scheduleSlots.toArray(), db.activities.toArray(), db.subjects.toArray(), db.tasks.toArray(),
   ])
+  await LocalNotifications.registerActionTypes({ types: [{ id: REMINDER_ACTION_TYPE, actions: [{ id: 'snooze-10', title: 'Snooze 10 min' }, { id: 'dismiss', title: 'Dismiss', destructive: true }] }] })
   const candidates = buildReminderCandidates({ slots, activities, subjects, tasks, settings, now: new Date(), days: 30 })
   const notifications = candidates.map((item) => ({
     id: stableNotificationId(item.key, item.kind === 'class' ? CLASS_ID_BASE : item.kind === 'activity' ? ACTIVITY_ID_BASE : TASK_ID_BASE),
     title: item.title,
     body: item.body,
+    actionTypeId: REMINDER_ACTION_TYPE,
+    autoCancel: true,
     ...(channelId ? { channelId } : {}),
     schedule: { at: item.at, allowWhileIdle: true },
   }))
