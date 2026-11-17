@@ -42,7 +42,7 @@
 - [x] Job logs inspected; npm reported 13 dependency vulnerabilities (2 moderate, 11 high), which are now a tracked security task.
 - [x] This is a web build artifact, not an APK.
 
-### Current feature status
+### Newly requested roadmap items\n- [ ] Android notifications for upcoming classes and task deadlines, with configurable lead times and per-feature controls.\n- [ ] Alarm-style alert behavior with sound, vibration patterns, snooze/dismiss actions, and Android permission-aware fallbacks.\n- [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.\n- [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.\n\n### Current feature status
 - Dashboard: initial local summaries are wired; finance calculations still need period-aware allowance and expense handling.
 - Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
 - Budget/Savings: data schema and formatting foundations exist; user-facing CRUD and accurate period ledger calculations remain.
@@ -55,7 +55,7 @@
 1. Verify the Settings backup/restore change with a completed GitHub Actions run; fix any build failures from actual logs.
 2. Inspect the exact dependency advisories and remediate safely without forcing incompatible major upgrades; pin reproducible dependencies with a lockfile.
 3. Implement Budget and Savings ledger with period-aware allowance, category limits, and integer-centavo calculations.
-4. Add schedule edit/update operations, personal activities, and local class reminder configuration/Android notification handling.
+4. Add schedule edit/update operations and personal activities. Then implement local class/deadline notifications, alarm-style vibration/snooze behavior, reboot rescheduling, and the native Android home-screen widget.
 5. Implement subject-linked Notepad and Tasks with checklist/deadline flows.
 6. Expand Settings with profile and module customization; keep language selection open until the user decides.
 7. Add full offline, accessibility, calculation, persistence, and Android flow tests.
