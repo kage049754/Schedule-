@@ -9,6 +9,8 @@ export function calculateFinanceSummary({ allowances = [], income = [], expenses
   const allowanceTotal = sumActiveAllowances(allowances, dateKey)
   const incomeTotal = income.reduce((sum, item) => sum + Number(item.amount || 0), 0)
   const expenseTotal = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const incomeToDate = income.filter((item) => !item.date || item.date <= dateKey).reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const expensesToDate = expenses.filter((item) => !item.date || item.date <= dateKey).reduce((sum, item) => sum + Number(item.amount || 0), 0)
   const savingsTotal = savingsEntries.reduce((sum, item) => {
     const amount = Number(item.amount || 0)
     return sum + (item.type === 'withdrawal' ? -amount : amount)
@@ -17,7 +19,9 @@ export function calculateFinanceSummary({ allowances = [], income = [], expenses
     allowanceTotal,
     incomeTotal,
     expenseTotal,
-    availableBalance: allowanceTotal + incomeTotal - expenseTotal,
+    incomeToDate,
+    expensesToDate,
+    availableBalance: allowanceTotal + incomeToDate - expensesToDate,
     savingsTotal,
   }
 }
