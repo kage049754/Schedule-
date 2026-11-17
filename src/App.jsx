@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { NavLink, Route, Routes, Navigate, Link } from 'react-router-dom'
 import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Bell, Plus, GraduationCap, Clock, AlertCircle } from 'lucide-react'
@@ -12,13 +12,14 @@ import TasksPage from './pages/TasksPage'
 import { db } from './database/db'
 import { initializeReminderActionListener, rescheduleLocalReminders } from './services/reminders'
 import { syncHomeWidget } from './services/widget'
+import { normalizeModulePreferences } from './services/modulePreferences'
 
 const navigation = [
-  { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { to: '/schedule', label: 'Schedule', icon: CalendarDays },
-  { to: '/budget', label: 'Budget', icon: Wallet },
-  { to: '/notepad', label: 'Notes', icon: NotebookPen },
-  { to: '/tasks', label: 'Tasks', icon: CheckSquare },
+  { id: 'dashboard', to: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { id: 'schedule', to: '/schedule', label: 'Schedule', icon: CalendarDays },
+  { id: 'budget', to: '/budget', label: 'Budget', icon: Wallet },
+  { id: 'notepad', to: '/notepad', label: 'Notes', icon: NotebookPen },
+  { id: 'tasks', to: '/tasks', label: 'Tasks', icon: CheckSquare },
 ]
 
 const modules = [
@@ -136,6 +137,22 @@ function Placeholder({ title, detail, icon: Icon }) {
 }
 
 export default function App() {
+  const [modulePreferences, setModulePreferences] = useState(() => normalizeModulePreferences())
+
+  useEffect(() => {
+    const subscription = liveQuery(() => db.settings.get('modules')).subscribe({
+      next: (row) => setModulePreferences(normalizeModulePreferences(row?.value)),
+      error: () => setModulePreferences(normalizeModulePreferences()),
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const visibleNavigation = modulePreferences.order
+    .filter((id) => !modulePreferences.hidden.includes(id))
+    .map((id) => navigation.find((item) => item.id === id))
+    .filter(Boolean)
+  const navGridClass = ({ 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4', 5: 'grid-cols-5' })[visibleNavigation.length] || 'grid-cols-5'
+
   useEffect(() => {
     let listener
     let cancelled = false
@@ -175,8 +192,8 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </main>
-    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto grid max-w-xl grid-cols-5 border-t border-slate-100 bg-white/95 px-2 pb-[max(.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-      {navigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium transition ${isActive ? 'text-forest-700' : 'text-slate-400'}`}>
+    <nav className={`fixed inset-x-0 bottom-0 z-10 mx-auto grid max-w-xl ${navGridClass} border-t border-slate-100 bg-white/95 px-2 pb-[max(.7rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      {visibleNavigation.map(({ to, label, icon: Icon }) => <NavLink key={to} to={to} className={({ isActive }) => `flex flex-col items-center gap-1 rounded-xl py-1 text-[10px] font-medium transition ${isActive ? 'text-forest-700' : 'text-slate-400'}`}>
         {({ isActive }) => <><Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} /><span>{label}</span></>}
       </NavLink>)}
     </nav>
