@@ -5,7 +5,7 @@ import { buildReminderCandidates, reminderDefaults, stableNotificationId } from 
 
 const CLASS_ID_BASE = 1000000
 const TASK_ID_BASE = 2000000
-const REMINDER_CHANNEL = 'schedule-reminders'
+const REMINDER_CHANNEL_VIBRATE = 'schedule-reminders-vibrate'\nconst REMINDER_CHANNEL_SILENT = 'schedule-reminders-silent'\nconst reminderChannelId = (vibrationEnabled) => vibrationEnabled ? REMINDER_CHANNEL_VIBRATE : REMINDER_CHANNEL_SILENT
 
 export async function getReminderSettings() {
   const row = await db.settings.get('reminders')
@@ -45,12 +45,12 @@ export async function sendTestReminder(vibrationEnabled = true) {
   if (!Capacitor.isNativePlatform()) throw new Error('Test notifications are available in the installed Android app.')
   const permission = await requestReminderPermission()
   if (permission.display !== 'granted') throw new Error('Notification permission was not granted.')
-  await ensureReminderChannel(vibrationEnabled)
+  const channelId = await ensureReminderChannel(vibrationEnabled)
   return LocalNotifications.schedule({ notifications: [{
     id: 1900001,
     title: 'Schedule reminder test',
     body: 'Your local notifications are working on this device.',
-    channelId: REMINDER_CHANNEL,
+    channelId,
     schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true },
   }] })
 }
@@ -74,7 +74,7 @@ export async function rescheduleLocalReminders(settingsOverride = null) {
   const settings = settingsOverride || await getReminderSettings()
   const permission = await LocalNotifications.checkPermissions()
   if (permission.display !== 'granted') return { scheduled: 0, permissionRequired: true }
-  await ensureReminderChannel(settings.vibrationEnabled)
+  const channelId = await ensureReminderChannel(settings.vibrationEnabled)
   const [slots, subjects, tasks, pending] = await Promise.all([
     db.scheduleSlots.toArray(), db.subjects.toArray(), db.tasks.toArray(), LocalNotifications.getPending(),
   ])
@@ -85,7 +85,7 @@ export async function rescheduleLocalReminders(settingsOverride = null) {
     id: stableNotificationId(item.key, item.kind === 'class' ? CLASS_ID_BASE : TASK_ID_BASE),
     title: item.title,
     body: item.body,
-    channelId: REMINDER_CHANNEL,
+    channelId,
     schedule: { at: item.at, allowWhileIdle: true },
   }))
   if (notifications.length) await LocalNotifications.schedule({ notifications })
