@@ -100,7 +100,7 @@ export default function SchedulePage() {
   function handleEditSubject(subject) {
     setEditingSubjectId(subject.id)
     setSubjectForm({ code: subject.code, name: subject.name, professor: subject.professor || '', lectureRoom: subject.lectureRoom || '', labRoom: subject.labRoom || '' })
-    setShowSubjectForm(true); setShowSlotForm(false); setError(''); setNotice('')
+    setShowSubjectForm(true); setShowSlotForm(false); setShowActivityForm(false); setError(''); setNotice('')
   }
 
   function handleEditSlot(slot) {
@@ -111,7 +111,7 @@ export default function SchedulePage() {
       end: `${String(Math.floor(slot.endMinutes / 60)).padStart(2, '0')}:${String(slot.endMinutes % 60).padStart(2, '0')}`,
       kind: slot.kind || 'Lecture', room: slot.room || '',
     })
-    setShowSlotForm(true); setShowSubjectForm(false); setError(''); setNotice('')
+    setShowSlotForm(true); setShowSubjectForm(false); setShowActivityForm(false); setError(''); setNotice('')
   }
 
 
@@ -162,8 +162,8 @@ export default function SchedulePage() {
       {notice && <p role="status" className="rounded-xl bg-forest-50 p-3 text-sm text-forest-800">{notice}</p>}
 
       <section className="flex flex-wrap gap-2">
-        <button onClick={() => { setEditingSlotIds(null); setSlotForm({ subjectId: subjects[0] ? String(subjects[0].id) : '', day: '1', start: '07:00', end: '08:00', kind: 'Lecture', room: '' }); setShowSlotForm((value) => !value); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add class</button>
-        <button onClick={() => { setEditingSubjectId(null); setSubjectForm({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' }); setShowSubjectForm((value) => !value); setShowSlotForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800"><BookOpen size={16} /> Add subject</button>
+        <button onClick={() => { setEditingSlotIds(null); setSlotForm({ subjectId: subjects[0] ? String(subjects[0].id) : '', day: '1', start: '07:00', end: '08:00', kind: 'Lecture', room: '' }); setShowSlotForm((value) => !value); setShowSubjectForm(false); setShowActivityForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add class</button>
+        <button onClick={() => { setEditingSubjectId(null); setSubjectForm({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' }); setShowSubjectForm((value) => !value); setShowSlotForm(false); setShowActivityForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800"><BookOpen size={16} /> Add subject</button>
         <button onClick={() => { setEditingActivityId(null); setActivityForm({ title: '', day: '1', start: '07:00', end: '08:00', location: '', notes: '' }); setShowActivityForm((value) => !value); setShowSlotForm(false); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-800"><Plus size={16} /> Add activity</button>
       </section>
 
