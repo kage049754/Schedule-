@@ -10,3 +10,14 @@ export function allowanceRange(period, date = new Date()) {
   if (period === 'monthly') return { startDate: key(new Date(start.getFullYear(), start.getMonth(), 1)), endDate: key(new Date(start.getFullYear(), start.getMonth() + 1, 0)) }
   throw new Error('Choose a daily, weekly, or monthly allowance.')
 }
+
+export function calculateCategoryUsage(limitAmount, expenses = []) {
+  const spent = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+  const limit = Number(limitAmount || 0)
+  return {
+    spent,
+    remaining: limit - spent,
+    percent: limit > 0 ? Math.min(100, Math.round(spent / limit * 100)) : 0,
+    exceeded: spent > limit,
+  }
+}
