@@ -29,3 +29,8 @@ export async function clearAllLocalData() {
     await Promise.all(db.tables.map((table) => table.clear()))
   })
 }
+
+
+db.version(2).stores({
+  categoryBudgets: '++id, categoryId, period, startDate, endDate',
+})
