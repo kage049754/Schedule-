@@ -10,7 +10,7 @@ import BudgetPage from './pages/BudgetPage'
 import NotepadPage from './pages/NotepadPage'
 import TasksPage from './pages/TasksPage'
 import { db } from './database/db'
-import { rescheduleLocalReminders } from './services/reminders'
+import { initializeReminderActionListener, rescheduleLocalReminders } from './services/reminders'
 import { syncHomeWidget } from './services/widget'
 
 const navigation = [
@@ -135,6 +135,12 @@ function Placeholder({ title, detail, icon: Icon }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    let listener
+    initializeReminderActionListener().then((handle) => { listener = handle }).catch(() => {})
+    return () => { listener?.remove() }
+  }, [])
+
   useEffect(() => {
     const subscription = liveQuery(async () => {
       const [slots, activities, subjects, tasks] = await Promise.all([db.scheduleSlots.toArray(), db.activities.toArray(), db.subjects.toArray(), db.tasks.toArray()])
