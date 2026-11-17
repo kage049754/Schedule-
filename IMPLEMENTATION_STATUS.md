@@ -55,7 +55,7 @@
 - [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
-- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled in [Run #116](https://github.com/kage049754/Schedule-/actions/runs/44156989511).\n- [ ] Verify manifest registration and launcher placement, refresh behavior, and physical-device display on an Android device.
+- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #120](https://github.com/kage049754/Schedule-/actions/runs/44157472735).\n- [ ] Verify manifest registration and launcher placement, refresh behavior, and physical-device display on an Android device.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
