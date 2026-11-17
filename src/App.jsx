@@ -137,8 +137,12 @@ function Placeholder({ title, detail, icon: Icon }) {
 export default function App() {
   useEffect(() => {
     let listener
-    initializeReminderActionListener().then((handle) => { listener = handle }).catch(() => {})
-    return () => { listener?.remove() }
+    let cancelled = false
+    initializeReminderActionListener().then((handle) => {
+      if (cancelled) handle?.remove()
+      else listener = handle
+    }).catch(() => {})
+    return () => { cancelled = true; listener?.remove() }
   }, [])
 
   useEffect(() => {
