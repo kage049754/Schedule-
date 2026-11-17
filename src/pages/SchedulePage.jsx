@@ -2,18 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { CalendarDays, Plus, Trash2, BookOpen, Clock3 } from 'lucide-react'
 import { db } from '../database/db'
-import { createScheduleSlot, createSubject, deleteScheduleSlot, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
+import { createScheduleSlot, createSubject, deleteScheduleSlots, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
 import { minutesFromTime } from '../utils/dates'
 
 const START_MINUTES = 7 * 60
 const END_MINUTES = 19 * 60
 const HOUR_HEIGHT = 48
-
-function toTime(value) {
-  const hours = Math.floor(value / 60)
-  const minutes = value % 60
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-}
 
 function displayTime(value) {
   return new Date(2000, 0, 1, Math.floor(value / 60), value % 60)
@@ -91,10 +85,10 @@ export default function SchedulePage() {
     }
   }
 
-  async function handleDeleteSlot(id) {
-    if (!window.confirm('Remove this timetable entry?')) return
-    await deleteScheduleSlot(id)
-    setNotice('Timetable entry removed.')
+  async function handleDeleteSlot(ids) {
+    if (!window.confirm('Remove this timetable block and all adjacent entries grouped into it?')) return
+    await deleteScheduleSlots(ids)
+    setNotice('Timetable block removed.')
   }
 
   async function handleDeleteSubject(subject) {
@@ -150,11 +144,11 @@ export default function SchedulePage() {
         <div className="flex items-center justify-between border-b border-slate-100 p-4"><h3 className="font-semibold text-slate-800">Weekly timetable</h3><span className="text-xs text-slate-400">{slots.length} entries</span></div>
         <div className="overflow-x-auto">
           <div className="min-w-[720px]">
-            <div className="grid grid-cols-[58px_repeat(7,minmax(90px,1fr))] border-b border-slate-100 bg-slate-50">
+            <div className="grid grid-cols-[58px_repeat(6,minmax(90px,1fr))] border-b border-slate-100 bg-slate-50">
               <div className="p-2" />
               {DAYS.map((day) => <div key={day.value} className="border-l border-slate-100 p-2 text-center text-xs font-semibold text-slate-600">{day.short}</div>)}
             </div>
-            <div className="grid grid-cols-[58px_repeat(7,minmax(90px,1fr))]">
+            <div className="grid grid-cols-[58px_repeat(6,minmax(90px,1fr))]">
               <div className="relative" style={{ height: (END_MINUTES - START_MINUTES) / 60 * HOUR_HEIGHT }}>
                 {Array.from({ length: 12 }, (_, index) => <div key={index} className="absolute right-2 -translate-y-1/2 text-[10px] text-slate-400" style={{ top: index * HOUR_HEIGHT }}>{displayTime(START_MINUTES + index * 60)}</div>)}
               </div>
@@ -169,7 +163,7 @@ export default function SchedulePage() {
                     <p className="truncate font-bold">{subject.code}</p>
                     <p className="truncate">{slot.room || 'No room'} · {slot.kind}</p>
                     <p className="truncate opacity-70">{displayTime(slot.startMinutes)}–{displayTime(slot.endMinutes)}</p>
-                    <button aria-label={`Remove ${subject.code} entry`} onClick={() => handleDeleteSlot(slot.ids[0])} className="absolute right-1 top-1 hidden rounded bg-white/90 p-1 text-red-600 group-hover:block"><Trash2 size={11} /></button>
+                    <button aria-label={`Remove ${subject.code} entry`} onClick={() => handleDeleteSlot(slot.ids)} className="absolute right-1 top-1 rounded bg-white/90 p-1 text-red-600"><Trash2 size={11} /></button>
                   </div>
                 })}
               </div>)}
