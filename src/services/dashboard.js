@@ -1,6 +1,6 @@
 import { db } from '../database/db'
 import { toLocalDateKey } from '../utils/dates'
-import { sumActiveAllowances } from './dashboardRules'
+import { buildRecentTransactions, calculateFinanceSummary } from './dashboardRules'
 
 export async function getDashboardSnapshot(now = new Date()) {
   const today = toLocalDateKey(now)
@@ -26,13 +26,8 @@ export async function getDashboardSnapshot(now = new Date()) {
     .sort((a, b) => String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')))
   const overdueTasks = pendingTasks.filter((task) => task.dueDate && task.dueDate < today)
 
-  const allowanceTotal = sumActiveAllowances(allowances, today)
-  const incomeTotal = income.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-  const expenseTotal = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-  const savingsTotal = savingsEntries.reduce((sum, item) => {
-    const amount = Number(item.amount || 0)
-    return sum + (item.type === 'withdrawal' ? -amount : amount)
-  }, 0)
+  const finance = calculateFinanceSummary({ allowances, income, expenses, savingsEntries }, today)
+  const recentTransactions = buildRecentTransactions(income, expenses, 5)
 
   return {
     today,
@@ -40,7 +35,8 @@ export async function getDashboardSnapshot(now = new Date()) {
     pendingTasks: pendingTasks.slice(0, 5),
     pendingTaskCount: pendingTasks.length,
     overdueTaskCount: overdueTasks.length,
-    availableBalance: allowanceTotal + incomeTotal - expenseTotal,
-    savingsTotal,
+    availableBalance: finance.availableBalance,
+    savingsTotal: finance.savingsTotal,
+    recentTransactions,
   }
 }
