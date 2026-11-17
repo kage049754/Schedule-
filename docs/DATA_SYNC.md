@@ -8,7 +8,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 2. The module writes the change to its Dexie table. Related multi-table changes use a Dexie transaction.
 3. Any screen whose `liveQuery` reads that table receives a fresh result and rerenders. No manual refresh is required.
 4. Derived totals and lists are recalculated from the latest records; screens do not keep separate copies of financial or planner truth.
-5. The app-level reminder observer watches schedule slots, subjects, and tasks. When one changes, it asks Android's local notification scheduler to cancel and rebuild the managed reminders.
+5. The app-level reminder observer watches schedule slots, personal activities, subjects, and tasks. When one changes, it asks Android's local notification scheduler to cancel and rebuild the managed reminders.
 
 ## Cross-module dependency map
 
@@ -19,10 +19,11 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 | Expense add/edit/delete | Budget totals, category limit usage, recent transactions, Dashboard available balance |
 | Savings goal or entry change | Budget goal progress and Dashboard total savings |
 | Subject add/edit/delete | Schedule subject choices, subject-linked Notepad/Tasks choices, class reminder labels; deleting a subject unlinks but preserves its notes and tasks |
-| Schedule slot add/edit/delete | Weekly timetable, Dashboard today's classes, next-class calculations, local class reminders |
+| Schedule slot add/edit/delete | Weekly timetable, Dashboard today's classes, next-class calculations, local class reminders and widget snapshot |
+| Personal activity add/edit/delete | Weekly timetable, Dashboard today's activities, local activity reminders |
 | Task add/edit/complete/delete | Task list, Dashboard pending/overdue counts and previews, local deadline reminders |
 | Note add/edit/archive/delete | Notepad list and search results |
-| Reminder preference change | Local Android reminder queue; does not change the underlying class/task records |
+| Reminder preference change | Local Android class/activity/task reminder queue; does not change the underlying planner records |
 
 ## Finance rules
 
@@ -35,15 +36,16 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 ## Notification behavior and timing
 
 - Class alerts are generated for the selected lead time before each matching weekly class. The default is 10 minutes; supported choices are at class start, 5, 10, 15, 30, or 60 minutes before.
+- Personal activity alerts use the same class lead-time preference and repeat on the activity's selected weekday.
 - Task alerts default to 8:00 AM on the due date; Settings can move the alert to 1, 2, 3, or 7 days before the deadline and choose a local alert time.
 - Completed tasks, deleted tasks, and removed/changed timetable entries must not retain stale managed reminders after the observer refreshes the queue, even if notification permission has been revoked.
-- The native scheduler maintains a rolling 30-day window. The observer also runs on app startup and after watched records change.
+- The native scheduler maintains a rolling 30-day window. The observer also runs on app startup and after watched records change. Changes to an activity cancel and rebuild its matching local alert.
 - Android notification permission is required for visible alerts. Exact-alarm access, battery restrictions, Do Not Disturb, manufacturer background limits, and reboot behavior can affect delivery. The app must communicate these limitations instead of claiming guaranteed delivery.
 - Reminder settings are local to this installation. Backup/restore is the supported way to move records/preferences to another device; each device schedules its own Android alerts.
 
 ## Widget contract
 
-The Android home-screen widget reads a compact snapshot from local Android SharedPreferences, written by the Capacitor bridge from Dexie data. It displays the next upcoming class (subject, start time, room, countdown) and nearest incomplete task deadline, including overdue tasks marked as overdue. The app pushes updates after schedule/subject/task changes and every minute while open; Android's widget update period refreshes it every 30 minutes while the app is closed. Tapping opens the Schedule app. It does not depend on a network service.
+The Android home-screen widget reads a compact snapshot from local Android SharedPreferences, written by the Capacitor bridge from Dexie data. It displays the next upcoming class (subject, start time, room, countdown) and nearest incomplete task deadline, including overdue tasks marked as overdue. The app pushes updates after schedule/activity/subject/task changes and every minute while open; Android's widget update period refreshes it every 30 minutes while the app is closed. Tapping opens the Schedule app. It does not depend on a network service.
 
 ## Verification requirements
 
