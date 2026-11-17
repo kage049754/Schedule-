@@ -137,8 +137,8 @@ function Placeholder({ title, detail, icon: Icon }) {
 export default function App() {
   useEffect(() => {
     const subscription = liveQuery(async () => {
-      const [slots, subjects, tasks] = await Promise.all([db.scheduleSlots.toArray(), db.subjects.toArray(), db.tasks.toArray()])
-      return { slots, subjects, tasks }
+      const [slots, activities, subjects, tasks] = await Promise.all([db.scheduleSlots.toArray(), db.activities.toArray(), db.subjects.toArray(), db.tasks.toArray()])
+      return { slots, activities, subjects, tasks }
     }).subscribe({
       next: () => {
         rescheduleLocalReminders().catch(() => {})
