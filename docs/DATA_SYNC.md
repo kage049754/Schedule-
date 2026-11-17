@@ -30,6 +30,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 - Money is stored as integer centavos. UI input in pesos is converted before writing.
 - The Budget and Dashboard available balance use the same calculation: active allowance for the current date plus income and expenses dated today or earlier. Future-dated transactions remain visible in totals/history but do not change today's available balance.
 - Dashboard recent money activity is derived from the same income and expense rows as Budget.
+- Budget reports derive today/week/month/all-time income, expenses, net, and transaction lists from the same live local records; changing a date range never creates or copies transaction data.
 - Category limit usage is recalculated from expenses whose dates fall inside the limit's saved period.
 - Savings progress is derived from deposits and withdrawals; savings are not automatically treated as expenses.
 
