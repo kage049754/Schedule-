@@ -14,7 +14,7 @@
   "dependencies": {
     "@capacitor/android": "^7.4.3",
     "@capacitor/core": "^7.4.3",
-    "@capacitor/local-notifications": "^7.4.3",
+    "@capacitor/local-notifications": "^7.0.7",
     "dexie": "^4.2.1",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
