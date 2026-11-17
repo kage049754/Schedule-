@@ -85,7 +85,7 @@ jobs:
           ]
           for (const permission of permissions) {
             const tag = `<uses-permission android:name="${permission}" />`
-            if (!xml.includes(permission)) xml = xml.replace(/<application\\b/, `${tag}\\n    <application`)
+            if (!xml.includes(permission)) xml = xml.replace(/<application\b/, `${tag}\n    <application`)
           }
           fs.writeFileSync(file, xml)
           NODE
