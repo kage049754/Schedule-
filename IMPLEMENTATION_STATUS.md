@@ -2,7 +2,7 @@
 
 ## Current milestone: Phase 5–9 — Budget, Savings, Notepad, and Tasks
 
-**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 25 tests verified in CI  
+**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 27 tests verified in CI  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -55,7 +55,7 @@
 - [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
-- [ ] Native Android home-screen widget source and Capacitor bridge added; verify Android compilation, launcher placement, refresh behavior, and physical-device display.
+- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled in [Run #116](https://github.com/kage049754/Schedule-/actions/runs/44156989511).\n- [ ] Verify manifest registration and launcher placement, refresh behavior, and physical-device display on an Android device.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
