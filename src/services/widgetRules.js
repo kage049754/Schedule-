@@ -25,8 +25,7 @@ export function findNextClass({ slots = [], subjects = [], now = new Date(), day
 }
 
 export function findNearestTaskDeadline(tasks = [], now = new Date()) {
-  const today = toLocalDateKey(now)
   return tasks
-    .filter((task) => !task.completed && task.dueDate && task.dueDate >= today)
+    .filter((task) => !task.completed && task.dueDate)
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || String(a.title).localeCompare(String(b.title)))[0] || null
 }
