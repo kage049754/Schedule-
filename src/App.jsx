@@ -1,5 +1,7 @@
-import { NavLink, Route, Routes, Navigate } from 'react-router-dom'
-import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Bell, Plus, GraduationCap } from 'lucide-react'
+import { NavLink, Route, Routes, Navigate, Link } from 'react-router-dom'
+import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Bell, Plus, GraduationCap, Clock, AlertCircle } from 'lucide-react'
+import { useDashboard } from './hooks/useDashboard'
+import { formatPeso } from './utils/money'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -26,7 +28,7 @@ function Header() {
           <h1 className="text-xl font-bold tracking-tight text-slate-800">Schedule</h1>
         </div>
       </div>
-      <button aria-label="Notifications" className="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-600 shadow-soft"><Bell size={19} /></button>
+      <Link to="/settings" aria-label="Settings" className="grid h-10 w-10 place-items-center rounded-full bg-white text-slate-600 shadow-soft"><Settings size={19} /></Link>
     </header>
   )
 }
@@ -39,39 +41,59 @@ function SummaryCard({ title, value, note, icon: Icon }) {
   </div>
 }
 
+function formatTime(minutes = 0) {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return new Date(2000, 0, 1, hours, mins).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })
+}
+
 function Dashboard() {
+  const { todaysClasses, pendingTasks, pendingTaskCount, overdueTaskCount, availableBalance, savingsTotal, error } = useDashboard()
   return (
     <div className="space-y-6">
       <section>
         <p className="text-sm text-slate-500">Your day, organized.</p>
         <h2 className="mt-1 text-2xl font-bold text-slate-800">Daily overview</h2>
       </section>
+      {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <section className="grid grid-cols-2 gap-3">
-        <SummaryCard title="Today's classes" value="0" note="No classes added yet" icon={CalendarDays} />
-        <SummaryCard title="Tasks to finish" value="0" note="Nothing pending yet" icon={CheckSquare} />
-        <SummaryCard title="Money available" value="₱0.00" note="Add your allowance" icon={Wallet} />
-        <SummaryCard title="Total savings" value="₱0.00" note="Start a savings goal" icon={GraduationCap} />
+        <SummaryCard title="Today's classes" value={String(todaysClasses.length)} note="Scheduled for today" icon={CalendarDays} />
+        <SummaryCard title="Tasks to finish" value={String(pendingTaskCount)} note={overdueTaskCount ? `${overdueTaskCount} overdue` : 'Pending assignments'} icon={CheckSquare} />
+        <SummaryCard title="Money available" value={formatPeso(availableBalance)} note="Allowance + income − expenses" icon={Wallet} />
+        <SummaryCard title="Total savings" value={formatPeso(savingsTotal)} note="Across all savings goals" icon={GraduationCap} />
       </section>
       <section className="rounded-3xl bg-forest-800 p-5 text-white shadow-soft">
         <div className="flex items-center justify-between">
-          <div><p className="text-sm text-forest-100">Get started</p><h3 className="mt-1 text-lg font-semibold">Set up your student life</h3></div>
+          <div><p className="text-sm text-forest-100">Your day</p><h3 className="mt-1 text-lg font-semibold">Academic and money overview</h3></div>
           <Plus className="text-forest-100" />
         </div>
-        <p className="mt-2 max-w-sm text-sm leading-6 text-forest-100">Add your classes, record your allowance, and create your first task. Your information stays on this device.</p>
+        <p className="mt-2 max-w-sm text-sm leading-6 text-forest-100">Dashboard totals update from your on-device records. No account or internet connection is required.</p>
       </section>
       <section className="space-y-3">
-        <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-800">Your modules</h3><span className="text-xs text-slate-400">Getting started</span></div>
-        <div className="grid grid-cols-1 gap-3">
-          {modules.map(({ title, detail, icon: Icon }) => (
-            <div key={title} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-forest-50 text-forest-700"><Icon size={19} /></div>
-              <div><p className="font-semibold text-slate-800">{title}</p><p className="text-xs text-slate-500">{detail}</p></div>
-            </div>
-          ))}
-        </div>
+        <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-800">Today's classes</h3><Link to="/schedule" className="text-xs font-semibold text-forest-700">Open schedule</Link></div>
+        {todaysClasses.length === 0 ? <EmptyRow text="No classes scheduled for today." /> : todaysClasses.map((slot) => (
+          <div key={slot.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-forest-50 text-forest-700"><Clock size={18} /></div>
+            <div className="min-w-0 flex-1"><p className="truncate font-semibold text-slate-800">{slot.subject?.code || slot.subject?.name || 'Class'}</p><p className="text-xs text-slate-500">{slot.room || 'Room not set'} · {slot.kind || 'Class'}</p></div>
+            <span className="text-right text-xs font-medium text-slate-500">{formatTime(slot.startMinutes)}–{formatTime(slot.endMinutes)}</span>
+          </div>
+        ))}
+      </section>
+      <section className="space-y-3">
+        <div className="flex items-center justify-between"><h3 className="font-semibold text-slate-800">Tasks to finish</h3><Link to="/tasks" className="text-xs font-semibold text-forest-700">Open tasks</Link></div>
+        {pendingTasks.length === 0 ? <EmptyRow text="No pending tasks. Add an assignment when ready." /> : pendingTasks.map((task) => (
+          <div key={task.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-50 text-amber-700"><AlertCircle size={17} /></div>
+            <div className="min-w-0 flex-1"><p className="truncate font-semibold text-slate-800">{task.title}</p><p className="text-xs text-slate-500">{task.dueDate ? `Due ${task.dueDate}` : 'No due date'} · {task.priority || 'Normal'} priority</p></div>
+          </div>
+        ))}
       </section>
     </div>
   )
+}
+
+function EmptyRow({ text }) {
+  return <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-4 text-sm text-slate-500">{text}</div>
 }
 
 function Placeholder({ title, detail, icon: Icon }) {
