@@ -23,7 +23,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 4 | Notifications and reminders | Local notifications for classes, personal activities, and task deadlines; configurable lead time and per-feature toggles | Implemented; Android permission/vibration settings and Snooze 10 min/Dismiss actions added; custom sound and reboot QA remain |
 | 4A | Alarm and vibration | Alarm-style class/deadline alerts, vibration, snooze/dismiss, and exact-alarm permission handling | Notification channels, vibration controls, Snooze 10 min, and Dismiss implemented; custom sound and reboot recovery remain |
 | 4B | Home-screen widget | Native Android home-screen widget showing next class, countdown, room, and nearest deadline; local snapshot bridge and periodic refresh | Implemented in CI APK; device placement/refresh QA pending |
-| 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Implemented; date-scoped allowance and transaction ledger |
+| 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Implemented; date-scoped allowance, transaction ledger, and today/week/month/all-time reports |
 | 6 | Spending limits | Category budgets and spent/remaining indicators | Implemented; daily/weekly/monthly limits and over-limit indicators |
 | 7 | Savings | Goals, contributions, saved totals, progress | Implemented; goal tracking and withdrawal validation |
 | 8 | Notepad | Personal, lecture, and subject-linked notes | Implemented; search, edit, pin, archive, restore, delete |
@@ -54,7 +54,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 **Budget**
 - Record daily, weekly, or monthly allowance and additional income.
 - Record expenses with date, amount, category, and optional note.
-- Available balance = opening balance + income - expenses.
+- Available balance = active allowance + income to date - expenses to date. Reports can be filtered by today, this week, this month, or all time.
 - Category limits for food, transportation, school, bills, health, shopping, and custom categories.
 
 **Savings**
