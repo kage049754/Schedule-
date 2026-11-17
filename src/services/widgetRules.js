@@ -1,5 +1,3 @@
-import { toLocalDateKey } from '../utils/dates.js'
-
 export function findNextClass({ slots = [], subjects = [], now = new Date(), days = 14 }) {
   const subjectById = new Map(subjects.map((subject) => [subject.id, subject]))
   let next = null
