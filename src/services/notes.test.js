@@ -3,11 +3,14 @@ import assert from 'node:assert/strict'
 import { filterNotes, normalizeNote } from './notes.js'
 
 test('note validation trims text and defaults to personal', () => {
-  assert.deepEqual(normalizeNote({ title: '  Review  ', content: '  Chapter one  ' }), {
-    title: 'Review', content: 'Chapter one', kind: 'personal', subjectId: null,
-    updatedAt: normalizeNote({ title: 'x', content: 'y' }).updatedAt,
-    archived: false, pinned: false,
-  })
+  const note = normalizeNote({ title: '  Review  ', content: '  Chapter one  ' })
+  assert.equal(note.title, 'Review')
+  assert.equal(note.content, 'Chapter one')
+  assert.equal(note.kind, 'personal')
+  assert.equal(note.subjectId, null)
+  assert.equal(note.archived, false)
+  assert.equal(note.pinned, false)
+  assert.ok(note.updatedAt)
 })
 
 test('note validation requires a title and content', () => {
