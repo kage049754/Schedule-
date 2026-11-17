@@ -3,6 +3,7 @@ import { liveQuery } from 'dexie'
 import { getDashboardSnapshot } from '../services/dashboard'
 
 const emptySnapshot = {
+  profile: null,
   todaysClasses: [],
   todaysActivities: [],
   pendingTasks: [],
