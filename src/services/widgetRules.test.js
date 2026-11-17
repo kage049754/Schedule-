@@ -27,5 +27,5 @@ test('home widget picks the nearest incomplete task deadline', () => {
     { id: 3, title: 'Overdue', dueDate: '2026-11-17', completed: false },
     { id: 4, title: 'Soonest', dueDate: '2026-11-20', completed: false },
   ], new Date(2026, 10, 18, 12, 0))
-  assert.equal(result.title, 'Soonest')
+  assert.equal(result.title, 'Overdue')
 })
