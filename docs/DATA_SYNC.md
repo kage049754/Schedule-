@@ -35,8 +35,8 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 ## Notification behavior and timing
 
 - Class alerts are generated for the selected lead time before each matching weekly class. The default is 10 minutes; supported choices are at class start, 5, 10, 15, 30, or 60 minutes before.
-- Task alerts are generated for 8:00 AM on the task's due date.
-- Completed tasks, deleted tasks, and removed/changed timetable entries must not retain stale managed reminders after the observer refreshes the queue.
+- Task alerts default to 8:00 AM on the due date; Settings can move the alert to 1, 2, 3, or 7 days before the deadline and choose a local alert time.
+- Completed tasks, deleted tasks, and removed/changed timetable entries must not retain stale managed reminders after the observer refreshes the queue, even if notification permission has been revoked.
 - The native scheduler maintains a rolling 30-day window. The observer also runs on app startup and after watched records change.
 - Android notification permission is required for visible alerts. Exact-alarm access, battery restrictions, Do Not Disturb, manufacturer background limits, and reboot behavior can affect delivery. The app must communicate these limitations instead of claiming guaranteed delivery.
 - Reminder settings are local to this installation. Backup/restore is the supported way to move records/preferences to another device; each device schedules its own Android alerts.
