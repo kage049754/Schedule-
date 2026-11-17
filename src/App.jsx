@@ -11,6 +11,7 @@ import NotepadPage from './pages/NotepadPage'
 import TasksPage from './pages/TasksPage'
 import { db } from './database/db'
 import { rescheduleLocalReminders } from './services/reminders'
+import { syncHomeWidget } from './services/widget'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -130,10 +131,14 @@ export default function App() {
       const [slots, subjects, tasks] = await Promise.all([db.scheduleSlots.toArray(), db.subjects.toArray(), db.tasks.toArray()])
       return { slots, subjects, tasks }
     }).subscribe({
-      next: () => { rescheduleLocalReminders().catch(() => {}) },
+      next: () => {
+        rescheduleLocalReminders().catch(() => {})
+        syncHomeWidget().catch(() => {})
+      },
       error: () => {},
     })
-    return () => subscription.unsubscribe()
+    const widgetInterval = setInterval(() => { syncHomeWidget().catch(() => {}) }, 60_000)
+    return () => { subscription.unsubscribe(); clearInterval(widgetInterval) }
   }, [])
 
   return <div className="mx-auto min-h-screen max-w-xl bg-cream px-5 pb-28 pt-5 safe-top">
