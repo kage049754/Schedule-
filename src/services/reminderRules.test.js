@@ -31,3 +31,30 @@ test('notification ids are stable and stay within the reserved range', () => {
   assert.equal(a, stableNotificationId('class-1-2026-11-18', 1000000))
   assert.ok(a >= 1000000 && a < 1800000)
 })
+
+
+test('task reminder supports configurable lead days and local alert time', () => {
+  const now = new Date(2026, 10, 18, 7, 0)
+  const candidates = buildReminderCandidates({
+    now, days: 7,
+    settings: { ...reminderDefaults(), classesEnabled: false, taskLeadDays: 2, taskReminderTime: '18:30' },
+    tasks: [{ id: 7, title: 'Submit project', dueDate: '2026-11-22', completed: false }],
+  })
+  assert.equal(candidates.length, 1)
+  assert.equal(candidates[0].at.getFullYear(), 2026)
+  assert.equal(candidates[0].at.getMonth(), 10)
+  assert.equal(candidates[0].at.getDate(), 20)
+  assert.equal(candidates[0].at.getHours(), 18)
+  assert.equal(candidates[0].at.getMinutes(), 30)
+  assert.equal(candidates[0].body, 'Due in 2 days.')
+})
+
+test('invalid task reminder time falls back to 8 AM', () => {
+  const candidates = buildReminderCandidates({
+    now: new Date(2026, 10, 18, 7, 0), days: 3,
+    settings: { ...reminderDefaults(), classesEnabled: false, taskReminderTime: '25:99' },
+    tasks: [{ id: 8, title: 'Read chapter', dueDate: '2026-11-19', completed: false }],
+  })
+  assert.equal(candidates[0].at.getHours(), 8)
+  assert.equal(candidates[0].at.getMinutes(), 0)
+})
