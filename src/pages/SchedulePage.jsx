@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { liveQuery } from 'dexie'
 import { CalendarDays, Plus, Trash2, BookOpen, Clock3, Pencil } from 'lucide-react'
 import { db } from '../database/db'
-import { createScheduleSlot, createSubject, updateScheduleSlots, updateSubject, deleteScheduleSlots, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
+import { createScheduleSlot, createSubject, updateScheduleSlots, updateSubject, createActivity, updateActivity, deleteActivity, deleteScheduleSlots, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
 import { minutesFromTime } from '../utils/dates'
 
 const START_MINUTES = 7 * 60
@@ -23,21 +23,26 @@ const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2
 export default function SchedulePage() {
   const [subjects, setSubjects] = useState([])
   const [slots, setSlots] = useState([])
+  const [activities, setActivities] = useState([])
   const [showSubjectForm, setShowSubjectForm] = useState(false)
   const [showSlotForm, setShowSlotForm] = useState(false)
+  const [showActivityForm, setShowActivityForm] = useState(false)
+  const [editingActivityId, setEditingActivityId] = useState(null)
   const [editingSubjectId, setEditingSubjectId] = useState(null)
   const [editingSlotIds, setEditingSlotIds] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [subjectForm, setSubjectForm] = useState({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' })
   const [slotForm, setSlotForm] = useState({ subjectId: '', day: '1', start: '07:00', end: '08:00', kind: 'Lecture', room: '' })
+  const [activityForm, setActivityForm] = useState({ title: '', day: '1', start: '07:00', end: '08:00', location: '', notes: '' })
 
   useEffect(() => {
     const subscription = liveQuery(async () => ({
       subjects: await db.subjects.orderBy('code').toArray(),
       slots: await db.scheduleSlots.toArray(),
+      activities: await db.activities.toArray(),
     })).subscribe({
-      next: (data) => { setSubjects(data.subjects); setSlots(data.slots) },
+      next: (data) => { setSubjects(data.subjects); setSlots(data.slots); setActivities(data.activities) },
       error: (reason) => setError(reason?.message || 'Unable to load your local timetable.'),
     })
     return () => subscription.unsubscribe()
@@ -109,6 +114,31 @@ export default function SchedulePage() {
     setShowSlotForm(true); setShowSubjectForm(false); setError(''); setNotice('')
   }
 
+
+  async function handleSaveActivity(event) {
+    event.preventDefault(); setError(''); setNotice('')
+    try {
+      const input = { ...activityForm, startMinutes: minutesFromTime(activityForm.start), endMinutes: minutesFromTime(activityForm.end) }
+      if (editingActivityId) await updateActivity(editingActivityId, input)
+      else await createActivity(input)
+      setShowActivityForm(false); setEditingActivityId(null)
+      setActivityForm({ title: '', day: '1', start: '07:00', end: '08:00', location: '', notes: '' })
+      setNotice(editingActivityId ? 'Activity updated. Dashboard and widget data will refresh.' : 'Activity added to your timetable.')
+    } catch (reason) { setError(reason.message || 'Unable to save activity.') }
+  }
+
+  function handleEditActivity(activity) {
+    setEditingActivityId(activity.id)
+    setActivityForm({ title: activity.title, day: String(activity.day), start: String(Math.floor(activity.startMinutes / 60)).padStart(2, '0') + ':' + String(activity.startMinutes % 60).padStart(2, '0'), end: String(Math.floor(activity.endMinutes / 60)).padStart(2, '0') + ':' + String(activity.endMinutes % 60).padStart(2, '0'), location: activity.location || '', notes: activity.notes || '' })
+    setShowActivityForm(true); setShowSlotForm(false); setShowSubjectForm(false); setError(''); setNotice('')
+  }
+
+  async function handleRemoveActivity(activity) {
+    if (!window.confirm('Delete activity "' + activity.title + '"?')) return
+    try { await deleteActivity(activity.id); setNotice('Activity deleted.') }
+    catch (reason) { setError(reason.message || 'Unable to delete activity.') }
+  }
+
   async function handleDeleteSlot(ids) {
     if (!window.confirm('Remove this timetable block and all adjacent entries grouped into it?')) return
     await deleteScheduleSlots(ids)
@@ -134,6 +164,7 @@ export default function SchedulePage() {
       <section className="flex flex-wrap gap-2">
         <button onClick={() => { setEditingSlotIds(null); setSlotForm({ subjectId: subjects[0] ? String(subjects[0].id) : '', day: '1', start: '07:00', end: '08:00', kind: 'Lecture', room: '' }); setShowSlotForm((value) => !value); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add class</button>
         <button onClick={() => { setEditingSubjectId(null); setSubjectForm({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' }); setShowSubjectForm((value) => !value); setShowSlotForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800"><BookOpen size={16} /> Add subject</button>
+        <button onClick={() => { setEditingActivityId(null); setActivityForm({ title: '', day: '1', start: '07:00', end: '08:00', location: '', notes: '' }); setShowActivityForm((value) => !value); setShowSlotForm(false); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-sm font-semibold text-amber-800"><Plus size={16} /> Add activity</button>
       </section>
 
       {showSubjectForm && <form onSubmit={handleCreateSubject} className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
@@ -164,8 +195,22 @@ export default function SchedulePage() {
         </>}
       </form>}
 
+      {showActivityForm && <form onSubmit={handleSaveActivity} className="space-y-3 rounded-2xl border border-amber-100 bg-white p-4 shadow-soft">
+        <h3 className="font-semibold text-slate-800">{editingActivityId ? 'Edit activity' : 'New personal activity'}</h3>
+        <Field label="Activity title"><input required maxLength={100} value={activityForm.title} onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })} className={inputClass} placeholder="Study group, club meeting, appointment…" /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Day"><select value={activityForm.day} onChange={(e) => setActivityForm({ ...activityForm, day: e.target.value })} className={inputClass}>{DAYS.map((day) => <option key={day.value} value={day.value}>{day.label}</option>)}</select></Field>
+          <Field label="Location"><input value={activityForm.location} onChange={(e) => setActivityForm({ ...activityForm, location: e.target.value })} className={inputClass} placeholder="Optional" /></Field>
+          <Field label="Start time"><input type="time" required value={activityForm.start} onChange={(e) => setActivityForm({ ...activityForm, start: e.target.value })} className={inputClass} /></Field>
+          <Field label="End time"><input type="time" required value={activityForm.end} onChange={(e) => setActivityForm({ ...activityForm, end: e.target.value })} className={inputClass} /></Field>
+        </div>
+        <Field label="Notes"><textarea rows={2} value={activityForm.notes} onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })} className={inputClass} placeholder="Optional details" /></Field>
+        <div className="flex gap-2"><button className="rounded-xl bg-amber-700 px-4 py-2 text-sm font-semibold text-white">{editingActivityId ? 'Save changes' : 'Save activity'}</button><button type="button" onClick={() => setShowActivityForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button></div>
+        <p className="text-xs text-slate-500">Activities repeat weekly on the selected day. Overlaps with classes and other activities are rejected.</p>
+      </form>}
+
       <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-soft">
-        <div className="flex items-center justify-between border-b border-slate-100 p-4"><h3 className="font-semibold text-slate-800">Weekly timetable</h3><span className="text-xs text-slate-400">{slots.length} entries</span></div>
+        <div className="flex items-center justify-between border-b border-slate-100 p-4"><h3 className="font-semibold text-slate-800">Weekly timetable</h3><span className="text-xs text-slate-400">{slots.length + activities.length} entries</span></div>
         <div className="overflow-x-auto">
           <div className="min-w-[720px]">
             <div className="grid grid-cols-[58px_repeat(6,minmax(90px,1fr))] border-b border-slate-100 bg-slate-50">
@@ -178,6 +223,16 @@ export default function SchedulePage() {
               </div>
               {mergedSlots.map((day) => <div key={day.value} className="relative border-l border-slate-100" style={{ height: (END_MINUTES - START_MINUTES) / 60 * HOUR_HEIGHT }}>
                 {Array.from({ length: 12 }, (_, index) => <div key={index} className="absolute inset-x-0 border-t border-slate-100" style={{ top: index * HOUR_HEIGHT }} />)}
+                {activities.filter((activity) => activity.day === day.value).map((activity) => {
+                  const top = (activity.startMinutes - START_MINUTES) / 60 * HOUR_HEIGHT
+                  const height = Math.max(28, (activity.endMinutes - activity.startMinutes) / 60 * HOUR_HEIGHT - 3)
+                  if (top < 0 || activity.endMinutes > END_MINUTES) return null
+                  return <div key={"activity-" + activity.id} className="absolute inset-x-1 z-[1] overflow-hidden rounded-lg border border-amber-200 bg-amber-50 p-1.5 text-[10px] text-amber-950" style={{ top, height }}>
+                    <p className="truncate font-bold">{activity.title}</p>
+                    <p className="truncate">{activity.location || 'Personal activity'}</p>
+                    <div className="absolute right-1 top-1 flex gap-1"><button aria-label={"Edit " + activity.title} onClick={() => handleEditActivity(activity)} className="rounded bg-white/90 p-1 text-amber-800"><Pencil size={11} /></button><button aria-label={"Delete " + activity.title} onClick={() => handleRemoveActivity(activity)} className="rounded bg-white/90 p-1 text-red-600"><Trash2 size={11} /></button></div>
+                  </div>
+                })}
                 {day.slots.map((slot) => {
                   const subject = subjectById.get(slot.subjectId)
                   const top = (slot.startMinutes - START_MINUTES) / 60 * HOUR_HEIGHT
