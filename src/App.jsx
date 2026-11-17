@@ -6,6 +6,7 @@ import SchedulePage from './pages/SchedulePage'
 import SettingsPage from './pages/SettingsPage'
 import BudgetPage from './pages/BudgetPage'
 import NotepadPage from './pages/NotepadPage'
+import TasksPage from './pages/TasksPage'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -119,7 +120,7 @@ export default function App() {
         <Route path="/schedule" element={<SchedulePage />} />
         <Route path="/budget" element={<BudgetPage />} />
         <Route path="/notepad" element={<NotepadPage />} />
-        <Route path="/tasks" element={<Placeholder title="Tasks" detail="Track assignments, deadlines, priorities, and checklists." icon={CheckSquare} />} />
+        <Route path="/tasks" element={<TasksPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
