@@ -1,8 +1,8 @@
 export function reminderDefaults() {
-  return { classesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true }
+  return { classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true }
 }
 
-export function buildReminderCandidates({ slots = [], subjects = [], tasks = [], settings = reminderDefaults(), now = new Date(), days = 30 }) {
+export function buildReminderCandidates({ slots = [], activities = [], subjects = [], tasks = [], settings = reminderDefaults(), now = new Date(), days = 30 }) {
   const subjectById = new Map(subjects.map((item) => [item.id, item]))
   const result = []
   const lead = Math.max(0, Math.min(120, Number(settings.leadMinutes) || 0))
@@ -21,6 +21,26 @@ export function buildReminderCandidates({ slots = [], subjects = [], tasks = [],
         at.setMinutes(at.getMinutes() - lead)
         if (at <= now) continue
         result.push({ kind: 'class', key: `class-${slot.id}-${date.toISOString().slice(0, 10)}`, at, title: `Upcoming class: ${subject.code || subject.name}`, body: `${slot.kind || 'Class'} starts in ${lead} minutes${slot.room ? ` · ${slot.room}` : ''}` })
+      }
+    }
+  }
+  if (settings.activitiesEnabled) {
+    for (let offset = 0; offset < days; offset += 1) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
+      const day = date.getDay()
+      for (const activity of activities) {
+        if (activity.day !== day) continue
+        const at = new Date(date)
+        at.setHours(Math.floor(activity.startMinutes / 60), activity.startMinutes % 60, 0, 0)
+        at.setMinutes(at.getMinutes() - lead)
+        if (at <= now) continue
+        result.push({
+          kind: 'activity',
+          key: 'activity-' + activity.id + '-' + date.toISOString().slice(0, 10),
+          at,
+          title: 'Upcoming activity: ' + activity.title,
+          body: (activity.location || 'Personal activity') + ' · starts in ' + lead + ' minutes',
+        })
       }
     }
   }
