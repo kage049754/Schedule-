@@ -2,7 +2,7 @@ import Dexie from 'dexie'
 
 export const db = new Dexie('ScheduleLocalDB')
 
-db.version(1).stores({
+const stores = {
   profile: 'id, updatedAt',
   subjects: '++id, code, name, createdAt',
   scheduleSlots: '++id, subjectId, day, startMinutes, endMinutes, kind, active',
@@ -17,6 +17,15 @@ db.version(1).stores({
   tasks: '++id, title, subjectId, dueDate, priority, completed, createdAt',
   taskChecklist: '++id, taskId, position, completed',
   settings: 'key, updatedAt',
+}
+
+db.version(1).stores(stores)
+
+// Every version must declare the complete schema. Omitting unchanged stores
+// from a later version would remove them from the active Dexie schema.
+db.version(2).stores({
+  ...stores,
+  categoryBudgets: '++id, categoryId, period, startDate, endDate',
 })
 
 export async function initializeDatabase() {
@@ -25,12 +34,7 @@ export async function initializeDatabase() {
 }
 
 export async function clearAllLocalData() {
-  await db.transaction('rw', Object.values(db.tables), async () => {
+  await db.transaction('rw', db.tables, async () => {
     await Promise.all(db.tables.map((table) => table.clear()))
   })
 }
-
-
-db.version(2).stores({
-  categoryBudgets: '++id, categoryId, period, startDate, endDate',
-})
