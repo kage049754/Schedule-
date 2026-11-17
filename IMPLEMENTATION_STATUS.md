@@ -2,7 +2,7 @@
 
 ## Current milestone: Phase 3 — Schedule reliability and research-driven QA
 
-**Status:** Schedule feature implementation builds successfully; new automated rule tests are added and awaiting CI verification  
+**Status:** Research-driven schedule fixes and automated rule tests verified by GitHub Actions  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -32,9 +32,12 @@
 - [x] Added npm test to GitHub Actions before production build.
 
 ### Current verification
-- [ ] Latest CI run after test integration must complete successfully before marking these fixes verified.
-- [ ] Check the uploaded artifact after the run completes.
-- [ ] The previous run #20 was a web build only; it was not an APK build.
+- [x] [Run #27](https://github.com/kage049754/Schedule-/actions/runs/44149678881) completed successfully.
+- [x] Four schedule rule tests passed: adjacency, overlap rejection, inactive-slot handling, and merge criteria.
+- [x] Vite production build succeeded; `dist/index.html` was verified.
+- [x] `schedule-web-build` artifact uploaded (100,099 bytes; SHA-256 `5cea600dc3db2ea9d958d2828fb3229c3598ce843d2f78f1adf67ccfe30eed99`).
+- [x] Job logs inspected; npm reported 13 dependency vulnerabilities (2 moderate, 11 high), which are now a tracked security task.
+- [x] This is a web build artifact, not an APK.
 
 ### Current feature status
 - Dashboard: initial local summaries are wired; finance calculations still need period-aware allowance and expense handling.
@@ -46,8 +49,8 @@
 - Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
 ### Next actions selected from current gaps
-1. Verify the latest test + build workflow; fix from actual logs if it fails.
-2. Add edit/update operations and activity entries to Schedule; add reminder configuration and Android notification handling.
+1. Inspect and remediate the 13 npm dependency audit findings; retain compatible, maintained dependencies and verify with a fresh audit.
+2. Add schedule edit/update operations and activity entries; add reminder configuration and Android notification handling.
 3. Implement Budget and Savings ledger with period-aware allowance and integer-centavo calculations.
 4. Implement subject-linked Notepad and Tasks.
 5. Implement Settings, module customization, backup UI, and language selection only after a language decision.
