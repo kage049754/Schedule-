@@ -43,12 +43,15 @@ export async function createScheduleSlot(input) {
   }
   if (!Number.isInteger(subjectId) || subjectId <= 0) throw new Error('Select a subject.')
 
-  return db.transaction('rw', db.subjects, db.scheduleSlots, async () => {
+  return db.transaction('rw', db.subjects, db.scheduleSlots, db.activities, async () => {
     const subject = await db.subjects.get(subjectId)
     if (!subject) throw new Error('The selected subject no longer exists.')
 
-    const sameDay = await db.scheduleSlots.where('day').equals(day).toArray()
-    if (hasTimeConflict(sameDay, { startMinutes, endMinutes })) {
+    const [sameDay, sameDayActivities] = await Promise.all([
+      db.scheduleSlots.where('day').equals(day).toArray(),
+      db.activities.where('day').equals(day).toArray(),
+    ])
+    if (hasTimeConflict([...sameDay, ...sameDayActivities], { startMinutes, endMinutes })) {
       throw new Error('Schedule conflict: this time overlaps an existing class or activity. The existing entry was not changed.')
     }
 
@@ -104,14 +107,17 @@ export async function updateScheduleSlots(ids, input) {
   }
   if (!Number.isInteger(subjectId) || subjectId <= 0) throw new Error('Select a subject.')
 
-  return db.transaction('rw', db.subjects, db.scheduleSlots, async () => {
+  return db.transaction('rw', db.subjects, db.scheduleSlots, db.activities, async () => {
     const existing = (await db.scheduleSlots.bulkGet(uniqueIds)).filter(Boolean)
     if (!existing.length) throw new Error('This timetable entry no longer exists.')
     const subject = await db.subjects.get(subjectId)
     if (!subject) throw new Error('The selected subject no longer exists.')
-    const sameDay = await db.scheduleSlots.where('day').equals(day).toArray()
+    const [sameDay, sameDayActivities] = await Promise.all([
+      db.scheduleSlots.where('day').equals(day).toArray(),
+      db.activities.where('day').equals(day).toArray(),
+    ])
     const otherEntries = sameDay.filter((slot) => !uniqueIds.includes(slot.id))
-    if (hasTimeConflict(otherEntries, { startMinutes, endMinutes })) {
+    if (hasTimeConflict([...otherEntries, ...sameDayActivities], { startMinutes, endMinutes })) {
       throw new Error('Schedule conflict: this time overlaps an existing class. No timetable entries were changed.')
     }
     const existingIds = existing.map((slot) => slot.id)
@@ -126,6 +132,55 @@ export async function updateScheduleSlots(ids, input) {
     if (existingIds.length > 1) await db.scheduleSlots.bulkDelete(existingIds.slice(1))
     return keepId
   })
+}
+
+
+function validateActivityInput(input) {
+  const title = String(input.title || '').trim()
+  const day = Number(input.day)
+  const startMinutes = Number(input.startMinutes)
+  const endMinutes = Number(input.endMinutes)
+  if (!title) throw new Error('Enter an activity title.')
+  if (!Number.isInteger(day) || day < 1 || day > 6) throw new Error('Select a valid day.')
+  if (!Number.isInteger(startMinutes) || !Number.isInteger(endMinutes) || startMinutes < 0 || endMinutes > 1440 || endMinutes <= startMinutes) {
+    throw new Error('End time must be later than start time.')
+  }
+  return { title, day, startMinutes, endMinutes, location: String(input.location || '').trim(), notes: String(input.notes || '').trim() }
+}
+
+export async function createActivity(input) {
+  const activity = validateActivityInput(input)
+  return db.transaction('rw', db.scheduleSlots, db.activities, async () => {
+    const [slots, activities] = await Promise.all([
+      db.scheduleSlots.where('day').equals(activity.day).toArray(),
+      db.activities.where('day').equals(activity.day).toArray(),
+    ])
+    if (hasTimeConflict([...slots, ...activities], activity)) throw new Error('Schedule conflict: this activity overlaps an existing class or activity.')
+    return db.activities.add({ ...activity, createdAt: new Date().toISOString() })
+  })
+}
+
+export async function updateActivity(id, input) {
+  const activityId = Number(id)
+  if (!Number.isInteger(activityId) || activityId <= 0) throw new Error('Invalid activity.')
+  const activity = validateActivityInput(input)
+  return db.transaction('rw', db.scheduleSlots, db.activities, async () => {
+    const existing = await db.activities.get(activityId)
+    if (!existing) throw new Error('This activity no longer exists.')
+    const [slots, activities] = await Promise.all([
+      db.scheduleSlots.where('day').equals(activity.day).toArray(),
+      db.activities.where('day').equals(activity.day).toArray(),
+    ])
+    if (hasTimeConflict([...slots, ...activities.filter((item) => item.id !== activityId)], activity)) {
+      throw new Error('Schedule conflict: this activity overlaps an existing class or activity.')
+    }
+    await db.activities.update(activityId, { ...activity, updatedAt: new Date().toISOString() })
+    return activityId
+  })
+}
+
+export async function deleteActivity(id) {
+  return db.activities.delete(Number(id))
 }
 
 export async function deleteScheduleSlot(id) {
