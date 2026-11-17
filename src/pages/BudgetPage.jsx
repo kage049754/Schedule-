@@ -5,6 +5,7 @@ import { db } from '../database/db'
 import { formatPeso, toCentavos } from '../utils/money'
 import { toLocalDateKey } from '../utils/dates'
 import { addAllowance, addIncome, addExpense, addExpenseCategory, addSavingsGoal, addSavingsEntry, deleteMoneyRecord } from '../services/budget'
+import CategoryLimits from './CategoryLimits'
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-forest-500 focus:ring-2 focus:ring-forest-100'
 const today = toLocalDateKey()
@@ -102,6 +103,7 @@ export default function BudgetPage() {
       <MoneyCard label="Total expenses" amount={totals.expenses} icon={TrendingDown} note="All recorded expenses" />
     </section>
 
+    <CategoryLimits />
     <section className="rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
       <h3 className="mb-3 flex items-center gap-2 font-semibold text-slate-800"><Plus size={17} /> Add a record</h3>
       <div className="grid grid-cols-2 gap-2">
