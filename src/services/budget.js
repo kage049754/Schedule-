@@ -67,3 +67,24 @@ export async function deleteMoneyRecord(tableName, id) {
   }
   return db[tableName].delete(recordId)
 }
+
+export async function saveCategoryLimit({ categoryId, amount, period, date = new Date() }) {
+  const id = Number(categoryId)
+  if (!Number.isInteger(id) || id <= 0) throw new Error('Choose an expense category.')
+  const category = await db.categories.get(id)
+  if (!category || category.type !== 'expense' || category.active === false) throw new Error('The selected expense category is unavailable.')
+  const range = allowanceRange(period, date)
+  const value = requireAmount(amount)
+  const existing = await db.categoryBudgets.where('categoryId').equals(id)
+    .filter((item) => item.period === period && item.startDate === range.startDate && item.endDate === range.endDate)
+    .first()
+  if (existing) {
+    await db.categoryBudgets.update(existing.id, { amount: value, updatedAt: new Date().toISOString() })
+    return existing.id
+  }
+  return db.categoryBudgets.add({ categoryId: id, amount: value, period, ...range, createdAt: new Date().toISOString() })
+}
+
+export async function deleteCategoryLimit(id) {
+  return db.categoryBudgets.delete(Number(id))
+}
