@@ -43,7 +43,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 
 ## Widget contract
 
-The planned Android home-screen widget reads only local data. It should display the next upcoming class (subject, start time, room, countdown) and nearest incomplete task deadline. It must refresh after relevant database changes and at time boundaries (for example, when a class starts or a deadline passes), and tap through to the relevant Schedule or Tasks screen. It must not depend on a network service.
+The Android home-screen widget reads a compact snapshot from local Android SharedPreferences, written by the Capacitor bridge from Dexie data. It displays the next upcoming class (subject, start time, room, countdown) and nearest incomplete task deadline. The app pushes updates after schedule/subject/task changes and every minute while open; Android's widget update period refreshes it every 30 minutes while the app is closed. Tapping opens Schedule. It does not depend on a network service.
 
 ## Verification requirements
 
