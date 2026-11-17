@@ -91,6 +91,39 @@ jobs:
           }
           fs.writeFileSync(file, xml)
           NODE
+      - name: Install native home-screen widget
+        run: |
+          mkdir -p android/app/src/main/java/com/schedule/studentplanner
+          mkdir -p android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/values
+          cp native/android/src/main/java/com/schedule/studentplanner/MainActivity.java android/app/src/main/java/com/schedule/studentplanner/MainActivity.java
+          cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java
+          cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java
+          cp native/android/src/main/res/layout/schedule_widget.xml android/app/src/main/res/layout/schedule_widget.xml
+          cp native/android/src/main/res/xml/schedule_widget_info.xml android/app/src/main/res/xml/schedule_widget_info.xml
+          cp native/android/src/main/res/values/schedule_widget_strings.xml android/app/src/main/res/values/schedule_widget_strings.xml
+          node <<'NODE'
+          const fs = require('node:fs')
+          const file = 'android/app/src/main/AndroidManifest.xml'
+          let xml = fs.readFileSync(file, 'utf8')
+          const permission = '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'
+          if (!xml.includes('android.permission.RECEIVE_BOOT_COMPLETED')) {
+            xml = xml.replace(/<application\\b/, `${permission}\\n    <application`)
+          }
+          const receiver = `
+              <receiver
+                  android:name=".ScheduleWidgetProvider"
+                  android:exported="true">
+                  <intent-filter>
+                      <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                  </intent-filter>
+                  <meta-data
+                      android:name="android.appwidget.provider"
+                      android:resource="@xml/schedule_widget_info" />
+              </receiver>
+          `
+          if (!xml.includes('ScheduleWidgetProvider')) xml = xml.replace('</application>', `${receiver}\\n</application>`)
+          fs.writeFileSync(file, xml)
+          NODE
       - name: Build debug APK
         run: |
           cd android
