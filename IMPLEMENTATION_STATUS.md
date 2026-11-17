@@ -1,8 +1,8 @@
 # Implementation status
 
-## Current milestone: Phase 11–12 — Settings and local backup
+## Current milestone: Phase 5–9 — Budget, Savings, Notepad, and Tasks
 
-**Status:** Schedule reliability verified; local backup Settings UI implemented and awaiting CI verification  
+**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 16 tests verified in CI  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -18,7 +18,7 @@
 - [x] Transaction-protected overlap prevention.
 - [x] GitHub Actions production web build and artifact upload.
 - [x] Earlier verified web build: [Run #20](https://github.com/kage049754/Schedule-/actions/runs/44149371333), successful.
-- [x] Added Settings screen with local JSON backup export and validated restore flow; import warns that existing local records will be replaced.
+- [x] Added Settings screen with local JSON backup export and validated restore flow; import warns that existing local records will be replaced.\n- [x] Implemented Budget/Savings CRUD for allowance, income, expenses, categories, goals, deposits, and withdrawals.\n- [x] Added period-aware daily/weekly/monthly allowance ranges and corrected dashboard balance to include only allowances active today.\n- [x] Added Notepad with personal/lecture/subject-linked notes, search, editing, pinning, archive/restore, and deletion.\n- [x] Added Tasks with due dates, priority, subject linking, pending/overdue/completed views, checklists, and completion/deletion flows.
 
 ### Research and engineering improvements in this iteration
 - [x] Reviewed Local Study OS for offline academic planning, task prioritization, and JSON backup patterns.
@@ -43,11 +43,11 @@
 - [x] This is a web build artifact, not an APK.
 
 ### Newly requested roadmap items\n- [ ] Android notifications for upcoming classes and task deadlines, with configurable lead times and per-feature controls.\n- [ ] Alarm-style alert behavior with sound, vibration patterns, snooze/dismiss actions, and Android permission-aware fallbacks.\n- [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.\n- [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.\n\n### Current feature status
-- Dashboard: initial local summaries are wired; finance calculations still need period-aware allowance and expense handling.
+- Dashboard: local class/task/finance summaries are wired; allowance totals are period-aware. Date-scoped finance reporting remains.
 - Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
-- Budget/Savings: data schema and formatting foundations exist; user-facing CRUD and accurate period ledger calculations remain.
-- Notepad: schema exists; user-facing editor/search/subject linking remain.
-- Tasks: schema exists; user-facing assignment/checklist/deadline flows remain.
+- Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and period reports remain.
+- Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
+- Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
 - Settings: local backup export/restore UI is implemented; profile, module visibility/order, appearance, and reminder controls remain.
 - Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
