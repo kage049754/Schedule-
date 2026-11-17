@@ -72,7 +72,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 - Dashboard shows incomplete work due soonest.
 
 **Settings**
-- Optional local display name, program/year-section, dashboard sections, module visibility/order, schedule preferences, budget categories, reminders, appearance, and app information.
+- Optional local display name and program/year-section; bottom-navigation module visibility and ordering; schedule preferences, budget categories, reminders, appearance, and app information.
 - Users can edit, hide, remove, or replace configurable sections/categories without deleting unrelated records.
 - Language decision remains open.
 
