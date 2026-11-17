@@ -4,6 +4,7 @@ import { useDashboard } from './hooks/useDashboard'
 import { formatPeso } from './utils/money'
 import SchedulePage from './pages/SchedulePage'
 import SettingsPage from './pages/SettingsPage'
+import BudgetPage from './pages/BudgetPage'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -115,7 +116,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/schedule" element={<SchedulePage />} />
-        <Route path="/budget" element={<Placeholder title="Budget" detail="Record allowance, income, expenses, category limits, and savings goals." icon={Wallet} />} />
+        <Route path="/budget" element={<BudgetPage />} />
         <Route path="/notepad" element={<Placeholder title="Notepad" detail="Organize personal, lecture, and subject-linked notes." icon={NotebookPen} />} />
         <Route path="/tasks" element={<Placeholder title="Tasks" detail="Track assignments, deadlines, priorities, and checklists." icon={CheckSquare} />} />
         <Route path="/settings" element={<SettingsPage />} />
