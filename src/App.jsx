@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { liveQuery } from 'dexie'
 import { NavLink, Route, Routes, Navigate, Link } from 'react-router-dom'
 import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Bell, Plus, GraduationCap, Clock, AlertCircle } from 'lucide-react'
 import { useDashboard } from './hooks/useDashboard'
@@ -7,6 +9,8 @@ import SettingsPage from './pages/SettingsPage'
 import BudgetPage from './pages/BudgetPage'
 import NotepadPage from './pages/NotepadPage'
 import TasksPage from './pages/TasksPage'
+import { db } from './database/db'
+import { rescheduleLocalReminders } from './services/reminders'
 
 const navigation = [
   { to: '/dashboard', label: 'Home', icon: LayoutDashboard },
@@ -111,6 +115,17 @@ function Placeholder({ title, detail, icon: Icon }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const subscription = liveQuery(async () => {
+      const [slots, tasks] = await Promise.all([db.scheduleSlots.toArray(), db.tasks.toArray()])
+      return { slots, tasks }
+    }).subscribe({
+      next: () => { rescheduleLocalReminders().catch(() => {}) },
+      error: () => {},
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   return <div className="mx-auto min-h-screen max-w-xl bg-cream px-5 pb-28 pt-5 safe-top">
     <Header />
     <main className="mt-7">
