@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { liveQuery } from 'dexie'
-import { CalendarDays, Plus, Trash2, BookOpen, Clock3 } from 'lucide-react'
+import { CalendarDays, Plus, Trash2, BookOpen, Clock3, Pencil } from 'lucide-react'
 import { db } from '../database/db'
-import { createScheduleSlot, createSubject, deleteScheduleSlots, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
+import { createScheduleSlot, createSubject, updateScheduleSlots, updateSubject, deleteScheduleSlots, deleteSubject, DAYS, mergeAdjacentSlots } from '../services/schedule'
 import { minutesFromTime } from '../utils/dates'
 
 const START_MINUTES = 7 * 60
@@ -25,6 +25,8 @@ export default function SchedulePage() {
   const [slots, setSlots] = useState([])
   const [showSubjectForm, setShowSubjectForm] = useState(false)
   const [showSlotForm, setShowSlotForm] = useState(false)
+  const [editingSubjectId, setEditingSubjectId] = useState(null)
+  const [editingSlotIds, setEditingSlotIds] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [subjectForm, setSubjectForm] = useState({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' })
@@ -54,11 +56,12 @@ export default function SchedulePage() {
     setError('')
     setNotice('')
     try {
-      const id = await createSubject(subjectForm)
+      const id = editingSubjectId ? await updateSubject(editingSubjectId, subjectForm) : await createSubject(subjectForm)
       setSubjectForm({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' })
+      setEditingSubjectId(null)
       setShowSubjectForm(false)
       setSlotForm((current) => ({ ...current, subjectId: String(id) }))
-      setNotice('Subject saved on this device.')
+      setNotice(editingSubjectId ? 'Subject updated. Linked notes, tasks, timetable labels, and reminders will refresh.' : 'Subject saved on this device.')
     } catch (reason) {
       setError(reason.message)
     }
@@ -69,20 +72,41 @@ export default function SchedulePage() {
     setError('')
     setNotice('')
     try {
-      await createScheduleSlot({
+      const slotInput = {
         subjectId: slotForm.subjectId,
         day: slotForm.day,
         startMinutes: minutesFromTime(slotForm.start),
         endMinutes: minutesFromTime(slotForm.end),
         kind: slotForm.kind,
         room: slotForm.room,
-      })
+      }
+      if (editingSlotIds) await updateScheduleSlots(editingSlotIds, slotInput)
+      else await createScheduleSlot(slotInput)
       setShowSlotForm(false)
+      setEditingSlotIds(null)
       setSlotForm((current) => ({ ...current, room: '' }))
-      setNotice('Class added to your weekly timetable.')
+      setNotice(editingSlotIds ? 'Timetable entry updated. Dashboard, reminders, and widget will refresh.' : 'Class added to your weekly timetable.')
     } catch (reason) {
       setError(reason.message)
     }
+  }
+
+
+  function handleEditSubject(subject) {
+    setEditingSubjectId(subject.id)
+    setSubjectForm({ code: subject.code, name: subject.name, professor: subject.professor || '', lectureRoom: subject.lectureRoom || '', labRoom: subject.labRoom || '' })
+    setShowSubjectForm(true); setShowSlotForm(false); setError(''); setNotice('')
+  }
+
+  function handleEditSlot(slot) {
+    setEditingSlotIds(slot.ids)
+    setSlotForm({
+      subjectId: String(slot.subjectId), day: String(slot.day),
+      start: `${String(Math.floor(slot.startMinutes / 60)).padStart(2, '0')}:${String(slot.startMinutes % 60).padStart(2, '0')}`,
+      end: `${String(Math.floor(slot.endMinutes / 60)).padStart(2, '0')}:${String(slot.endMinutes % 60).padStart(2, '0')}`,
+      kind: slot.kind || 'Lecture', room: slot.room || '',
+    })
+    setShowSlotForm(true); setShowSubjectForm(false); setError(''); setNotice('')
   }
 
   async function handleDeleteSlot(ids) {
@@ -108,12 +132,12 @@ export default function SchedulePage() {
       {notice && <p role="status" className="rounded-xl bg-forest-50 p-3 text-sm text-forest-800">{notice}</p>}
 
       <section className="flex flex-wrap gap-2">
-        <button onClick={() => { setShowSlotForm((value) => !value); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add class</button>
-        <button onClick={() => { setShowSubjectForm((value) => !value); setShowSlotForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800"><BookOpen size={16} /> Add subject</button>
+        <button onClick={() => { setEditingSlotIds(null); setSlotForm({ subjectId: subjects[0] ? String(subjects[0].id) : '', day: '1', start: '07:00', end: '08:00', kind: 'Lecture', room: '' }); setShowSlotForm((value) => !value); setShowSubjectForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl bg-forest-700 px-4 py-2.5 text-sm font-semibold text-white"><Plus size={16} /> Add class</button>
+        <button onClick={() => { setEditingSubjectId(null); setSubjectForm({ code: '', name: '', professor: '', lectureRoom: '', labRoom: '' }); setShowSubjectForm((value) => !value); setShowSlotForm(false); setError('') }} className="inline-flex items-center gap-2 rounded-xl border border-forest-200 bg-white px-4 py-2.5 text-sm font-semibold text-forest-800"><BookOpen size={16} /> Add subject</button>
       </section>
 
       {showSubjectForm && <form onSubmit={handleCreateSubject} className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
-        <h3 className="font-semibold text-slate-800">New subject</h3>
+        <h3 className="font-semibold text-slate-800">{editingSubjectId ? 'Edit subject' : 'New subject'}</h3>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Subject code"><input required value={subjectForm.code} onChange={(e) => setSubjectForm({ ...subjectForm, code: e.target.value })} className={inputClass} placeholder="e.g. ITEC 80" /></Field>
           <Field label="Subject name"><input required value={subjectForm.name} onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })} className={inputClass} placeholder="Human Computer Interaction" /></Field>
@@ -121,11 +145,11 @@ export default function SchedulePage() {
           <Field label="Lecture room"><input value={subjectForm.lectureRoom} onChange={(e) => setSubjectForm({ ...subjectForm, lectureRoom: e.target.value })} className={inputClass} placeholder="Room" /></Field>
           <Field label="Lab room"><input value={subjectForm.labRoom} onChange={(e) => setSubjectForm({ ...subjectForm, labRoom: e.target.value })} className={inputClass} placeholder="Room" /></Field>
         </div>
-        <div className="flex gap-2"><button className="rounded-xl bg-forest-700 px-4 py-2 text-sm font-semibold text-white">Save subject</button><button type="button" onClick={() => setShowSubjectForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button></div>
+        <div className="flex gap-2"><button className="rounded-xl bg-forest-700 px-4 py-2 text-sm font-semibold text-white">{editingSubjectId ? 'Save changes' : 'Save subject'}</button><button type="button" onClick={() => setShowSubjectForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button></div>
       </form>}
 
       {showSlotForm && <form onSubmit={handleCreateSlot} className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
-        <h3 className="font-semibold text-slate-800">Add timetable entry</h3>
+        <h3 className="font-semibold text-slate-800">{editingSlotIds ? 'Edit timetable entry' : 'Add timetable entry'}</h3>
         {subjects.length === 0 ? <p className="text-sm text-slate-500">Create a subject first, then add its timetable entry.</p> : <>
           <Field label="Subject"><select required value={slotForm.subjectId} onChange={(e) => setSlotForm({ ...slotForm, subjectId: e.target.value, room: '' })} className={inputClass}><option value="">Select subject</option>{subjects.map((subject) => <option key={subject.id} value={subject.id}>{subject.code} — {subject.name}</option>)}</select></Field>
           <div className="grid grid-cols-2 gap-3">
@@ -136,7 +160,7 @@ export default function SchedulePage() {
           </div>
           <Field label="Room"><input value={slotForm.room} onChange={(e) => setSlotForm({ ...slotForm, room: e.target.value })} className={inputClass} placeholder="Uses the subject's default room if blank" /></Field>
           <p className="text-xs text-slate-500">Overlapping entries on the same day are rejected. Existing timetable entries are never overwritten.</p>
-          <div className="flex gap-2"><button className="rounded-xl bg-forest-700 px-4 py-2 text-sm font-semibold text-white">Add to schedule</button><button type="button" onClick={() => setShowSlotForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button></div>
+          <div className="flex gap-2"><button className="rounded-xl bg-forest-700 px-4 py-2 text-sm font-semibold text-white">{editingSlotIds ? 'Save changes' : 'Add to schedule'}</button><button type="button" onClick={() => setShowSlotForm(false)} className="rounded-xl border border-slate-200 px-4 py-2 text-sm">Cancel</button></div>
         </>}
       </form>}
 
@@ -163,7 +187,7 @@ export default function SchedulePage() {
                     <p className="truncate font-bold">{subject.code}</p>
                     <p className="truncate">{slot.room || 'No room'} · {slot.kind}</p>
                     <p className="truncate opacity-70">{displayTime(slot.startMinutes)}–{displayTime(slot.endMinutes)}</p>
-                    <button aria-label={`Remove ${subject.code} entry`} onClick={() => handleDeleteSlot(slot.ids)} className="absolute right-1 top-1 rounded bg-white/90 p-1 text-red-600"><Trash2 size={11} /></button>
+                    <div className="absolute right-1 top-1 flex gap-1"><button aria-label={`Edit ${subject.code} entry`} onClick={() => handleEditSlot(slot)} className="rounded bg-white/90 p-1 text-forest-700"><Pencil size={11} /></button><button aria-label={`Remove ${subject.code} entry`} onClick={() => handleDeleteSlot(slot.ids)} className="rounded bg-white/90 p-1 text-red-600"><Trash2 size={11} /></button></div>
                   </div>
                 })}
               </div>)}
@@ -179,7 +203,7 @@ export default function SchedulePage() {
           <div key={subject.id} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-forest-50 text-forest-700"><BookOpen size={18} /></div>
             <div className="min-w-0 flex-1"><p className="font-semibold text-slate-800">{subject.code} · {subject.name}</p><p className="truncate text-xs text-slate-500">{subject.professor || 'Professor not set'} · Lec: {subject.lectureRoom || '—'} · Lab: {subject.labRoom || '—'}</p></div>
-            <button aria-label={`Delete ${subject.code}`} onClick={() => handleDeleteSubject(subject)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
+            <button aria-label={`Edit ${subject.code}`} onClick={() => handleEditSubject(subject)} className="rounded-lg p-2 text-slate-400 hover:bg-forest-50 hover:text-forest-700"><Pencil size={15} /></button><button aria-label={`Delete ${subject.code}`} onClick={() => handleDeleteSubject(subject)} className="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600"><Trash2 size={16} /></button>
           </div>
         ))}
       </section>
