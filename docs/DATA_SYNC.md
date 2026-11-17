@@ -14,6 +14,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 
 | Source change | Live consumers / expected updates |
 | --- | --- |
+| Profile add/edit | Settings profile fields and Dashboard greeting |
 | Allowance add/edit/delete | Budget totals and Dashboard available balance |
 | Income add/edit/delete | Budget totals, recent transactions, Dashboard available balance |
 | Expense add/edit/delete | Budget totals, category limit usage, recent transactions, Dashboard available balance |
