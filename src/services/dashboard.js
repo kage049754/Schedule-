@@ -5,8 +5,9 @@ import { buildRecentTransactions, calculateFinanceSummary } from './dashboardRul
 export async function getDashboardSnapshot(now = new Date()) {
   const today = toLocalDateKey(now)
   const day = now.getDay()
-  const [slots, subjects, tasks, allowances, income, expenses, savingsEntries] = await Promise.all([
+  const [slots, activities, subjects, tasks, allowances, income, expenses, savingsEntries] = await Promise.all([
     db.scheduleSlots.where('day').equals(day).toArray(),
+    db.activities.where('day').equals(day).toArray(),
     db.subjects.toArray(),
     db.tasks.toArray(),
     db.allowances.toArray(),
@@ -21,6 +22,8 @@ export async function getDashboardSnapshot(now = new Date()) {
     .sort((a, b) => a.startMinutes - b.startMinutes)
     .map((slot) => ({ ...slot, subject: subjectById.get(slot.subjectId) || null }))
 
+  const todaysActivities = activities.sort((a, b) => a.startMinutes - b.startMinutes)
+
   const pendingTasks = tasks
     .filter((task) => !task.completed)
     .sort((a, b) => String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')))
@@ -32,6 +35,7 @@ export async function getDashboardSnapshot(now = new Date()) {
   return {
     today,
     todaysClasses,
+    todaysActivities,
     pendingTasks: pendingTasks.slice(0, 5),
     pendingTaskCount: pendingTasks.length,
     overdueTaskCount: overdueTasks.length,
