@@ -60,7 +60,7 @@
 
 ### Current feature status
 - Dashboard: reactive class/task/finance summaries, recent income/expense activity, and period-aware allowance totals are wired. Date-scoped finance reporting remains.
-- Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
+- Schedule: weekly timetable, subject management, transactional class/subject edits, conflict checks, and cascade-safe subject unlinking are implemented; personal activities remain.
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits are date-scoped and Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
@@ -71,7 +71,7 @@
 1. Finish the current CI cycle, inspect unit-test and Android Gradle logs, download the newest APK artifact, and verify its contents/checksum.
 2. Implement the native Android home-screen widget with next class, countdown, room, and nearest task deadline; keep its data local and refresh on database changes/time boundaries.
 3. Complete alarm behavior: custom sound options, snooze/dismiss actions, reboot rescheduling, and Android permission/battery/Do Not Disturb fallbacks.
-4. Add schedule edit/update operations and personal activities, then connect activities to the Dashboard and reminders where appropriate.
+4. Add personal activities and connect them to the Dashboard, reminders, and widget where appropriate.
 5. Complete date-scoped finance reports, Settings profile/module customization, and full offline/accessibility/persistence tests.
 6. Review and safely remediate remaining dependency audit findings without incompatible major upgrades; add a reproducible lockfile.
 7. Verify the release APK and request separate physical-device QA before production signing/release.
