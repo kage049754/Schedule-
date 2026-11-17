@@ -63,6 +63,7 @@ function Dashboard() {
     <div className="space-y-6">
       <section>
         <p className="text-sm text-slate-500">{profile?.displayName ? `Welcome back, ${profile.displayName}.` : "Your day, organized."}</p>
+        {(profile?.program || profile?.yearSection) && <p className="mt-1 text-xs text-slate-400">{[profile.program, profile.yearSection].filter(Boolean).join(" · ")}</p>}
         <h2 className="mt-1 text-2xl font-bold text-slate-800">Daily overview</h2>
       </section>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
