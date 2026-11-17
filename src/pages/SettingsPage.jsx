@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Download, Upload, ShieldCheck, Settings2 } from 'lucide-react'
 import { exportLocalBackup, restoreLocalBackup } from '../services/backup'
 import { checkExactAlarmAccess, getReminderSettings, openExactAlarmSettings, requestReminderPermission, saveReminderSettings, sendTestReminder } from '../services/reminders'
+import { getLocalProfile, saveLocalProfile } from '../services/profile'
 
 export default function SettingsPage() {
   const fileInput = useRef(null)
@@ -11,11 +12,25 @@ export default function SettingsPage() {
   const [reminders, setReminders] = useState({ classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true })
   const [exactAlarm, setExactAlarm] = useState('unknown')
   const [reminderBusy, setReminderBusy] = useState(false)
+  const [profile, setProfile] = useState({ displayName: '', program: '', yearSection: '' })
+  const [profileBusy, setProfileBusy] = useState(false)
 
   useEffect(() => {
+    getLocalProfile().then(setProfile).catch((reason) => setError(reason?.message || 'Unable to load your profile.'))
     getReminderSettings().then(setReminders).catch((reason) => setError(reason?.message || 'Unable to load reminder settings.'))
     checkExactAlarmAccess().then((value) => setExactAlarm(value.exact_alarm || 'unsupported')).catch(() => setExactAlarm('unknown'))
   }, [])
+
+
+  async function handleSaveProfile(event) {
+    event.preventDefault(); setProfileBusy(true); setError(''); setNotice('')
+    try {
+      const saved = await saveLocalProfile(profile)
+      setProfile(saved)
+      setNotice('Profile saved on this device. Dashboard greeting updated.')
+    } catch (reason) { setError(reason?.message || 'Unable to save your profile.') }
+    finally { setProfileBusy(false) }
+  }
 
   async function handleSaveReminders() {
     setReminderBusy(true); setError(''); setNotice('')
@@ -106,6 +121,16 @@ export default function SettingsPage() {
 
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {notice && <p role="status" className="rounded-xl bg-forest-50 p-3 text-sm text-forest-800">{notice}</p>}
+
+      <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
+        <div><h3 className="font-semibold text-slate-800">Local profile</h3><p className="mt-1 text-xs text-slate-500">Optional details stored only on this device. No account or sign-in is created.</p></div>
+        <form onSubmit={handleSaveProfile} className="space-y-3">
+          <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Display name</span><input maxLength={60} value={profile.displayName || ''} onChange={(e) => setProfile({ ...profile, displayName: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="Name shown on the Dashboard" /></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Program</span><input maxLength={80} value={profile.program || ''} onChange={(e) => setProfile({ ...profile, program: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="e.g. BS Information Technology" /></label>
+          <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Year and section</span><input maxLength={60} value={profile.yearSection || ''} onChange={(e) => setProfile({ ...profile, yearSection: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" placeholder="e.g. 2nd Year · Section 2-6" /></label>
+          <button disabled={profileBusy} className="w-full rounded-xl bg-forest-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{profileBusy ? 'Saving…' : 'Save profile'}</button>
+        </form>
+      </section>
 
       <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
         <div className="flex items-center gap-3">
