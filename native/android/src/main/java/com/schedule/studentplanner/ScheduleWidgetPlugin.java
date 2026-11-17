@@ -16,11 +16,11 @@ public class ScheduleWidgetPlugin extends Plugin {
     public void updateSnapshot(PluginCall call) {
         Context context = getContext();
         SharedPreferences preferences = context.getSharedPreferences("schedule_widget", Context.MODE_PRIVATE);
-        String classTitle = call.getString("classTitle", "No upcoming class");
-        String classDetails = call.getString("classDetails", "Your timetable is clear");
-        long classStartAt = call.getLong("classStartAt", 0L);
-        String taskTitle = call.getString("taskTitle", "No pending deadline");
-        String taskDueDate = call.getString("taskDueDate", "");
+        String classTitle = call.getData().optString("classTitle", "No upcoming class");
+        String classDetails = call.getData().optString("classDetails", "Your timetable is clear");
+        long classStartAt = call.getData().optLong("classStartAt", 0L);
+        String taskTitle = call.getData().optString("taskTitle", "No pending deadline");
+        String taskDueDate = call.getData().optString("taskDueDate", "");
         preferences.edit()
             .putString("classTitle", classTitle)
             .putString("classDetails", classDetails)
