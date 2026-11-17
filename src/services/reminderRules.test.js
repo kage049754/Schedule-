@@ -23,7 +23,7 @@ test('task reminders skip completed, overdue, and undated tasks', () => {
     { id: 3, title: 'Past', dueDate: '2026-11-17', completed: false },
     { id: 4, title: 'No date', completed: false },
   ] })
-  assert.deepEqual(candidates.map((x) => x.key), ['task-1-2026-11-20'])
+  assert.deepEqual(candidates.map((x) => x.key), ['task-1-2026-11-20-0-08:00'])
 })
 
 test('notification ids are stable and stay within the reserved range', () => {
