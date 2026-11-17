@@ -52,6 +52,8 @@
 ### Newly requested roadmap items
 - [x] Implemented local Android class and deadline notifications with configurable class lead time and per-feature toggles.
 - [x] Added Android reminder vibration-channel selection, test alert, notification permission handling, and exact-alarm settings access.
+- [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
+- [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
 - [ ] Native Android home-screen widget showing the next class, countdown, room, and nearest deadline; refresh from local data only.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
@@ -62,7 +64,7 @@
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits are date-scoped and Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
-- Settings: local backup export/restore UI is implemented; profile, module visibility/order, appearance, and reminder controls remain.
+- Settings: local backup export/restore and class/task reminder controls are implemented; profile, module visibility/order, appearance, and richer alarm controls remain.
 - Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
 ### Next actions selected from current gaps
