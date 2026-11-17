@@ -66,6 +66,67 @@ export async function createScheduleSlot(input) {
   })
 }
 
+
+export async function updateSubject(id, input) {
+  const subjectId = Number(id)
+  const code = String(input.code || '').trim().toUpperCase()
+  const name = String(input.name || '').trim()
+  if (!Number.isInteger(subjectId) || subjectId <= 0) throw new Error('Invalid subject.')
+  if (!code || !name) throw new Error('Subject code and subject name are required.')
+  return db.transaction('rw', db.subjects, async () => {
+    const existing = await db.subjects.get(subjectId)
+    if (!existing) throw new Error('This subject no longer exists.')
+    const duplicate = await db.subjects.where('code').equals(code).first()
+    if (duplicate && duplicate.id !== subjectId) throw new Error('A subject with this code already exists.')
+    await db.subjects.update(subjectId, {
+      code, name,
+      professor: String(input.professor || '').trim(),
+      lectureRoom: String(input.lectureRoom || '').trim(),
+      labRoom: String(input.labRoom || '').trim(),
+      color: input.color || existing.color || 'forest',
+      updatedAt: new Date().toISOString(),
+    })
+    return subjectId
+  })
+}
+
+export async function updateScheduleSlots(ids, input) {
+  const uniqueIds = [...new Set((ids || []).map(Number).filter((value) => Number.isInteger(value) && value > 0))]
+  if (!uniqueIds.length) throw new Error('Choose a timetable entry to edit.')
+  const day = Number(input.day)
+  const startMinutes = Number(input.startMinutes)
+  const endMinutes = Number(input.endMinutes)
+  const subjectId = Number(input.subjectId)
+  const kind = input.kind === 'Lab' ? 'Lab' : 'Lecture'
+  if (!Number.isInteger(day) || day < 1 || day > 6) throw new Error('Select a valid day.')
+  if (!Number.isInteger(startMinutes) || !Number.isInteger(endMinutes) || startMinutes < 0 || endMinutes > 1440 || endMinutes <= startMinutes) {
+    throw new Error('End time must be later than start time.')
+  }
+  if (!Number.isInteger(subjectId) || subjectId <= 0) throw new Error('Select a subject.')
+
+  return db.transaction('rw', db.subjects, db.scheduleSlots, async () => {
+    const existing = (await db.scheduleSlots.bulkGet(uniqueIds)).filter(Boolean)
+    if (!existing.length) throw new Error('This timetable entry no longer exists.')
+    const subject = await db.subjects.get(subjectId)
+    if (!subject) throw new Error('The selected subject no longer exists.')
+    const sameDay = await db.scheduleSlots.where('day').equals(day).toArray()
+    const otherEntries = sameDay.filter((slot) => !uniqueIds.includes(slot.id))
+    if (hasTimeConflict(otherEntries, { startMinutes, endMinutes })) {
+      throw new Error('Schedule conflict: this time overlaps an existing class. No timetable entries were changed.')
+    }
+    const keepId = uniqueIds[0]
+    const roomFromSubject = kind === 'Lab' ? subject.labRoom : subject.lectureRoom
+    await db.scheduleSlots.update(keepId, {
+      subjectId, day, startMinutes, endMinutes, kind,
+      room: String(input.room || roomFromSubject || '').trim(),
+      active: existing[0].active !== false,
+      updatedAt: new Date().toISOString(),
+    })
+    if (uniqueIds.length > 1) await db.scheduleSlots.bulkDelete(uniqueIds.slice(1))
+    return keepId
+  })
+}
+
 export async function deleteScheduleSlot(id) {
   return db.scheduleSlots.delete(Number(id))
 }
