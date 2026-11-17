@@ -2,7 +2,7 @@
 
 ## Current milestone: Live synchronization, reminders, native widget, and APK verification
 
-**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 30 tests pass in the latest verified CI; date-filtered finance report tests are now added and awaiting CI  
+**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 32 tests pass in [Run #169](https://github.com/kage049754/Schedule-/actions/runs/44162564899); latest Android APK extracted and checked  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -41,7 +41,7 @@
 
 ### Current verification
 - [x] [Run #27](https://github.com/kage049754/Schedule-/actions/runs/44149678881) completed successfully.
-- [x] [Run #160](https://github.com/kage049754/Schedule-/actions/runs/44161622055) completed successfully; all 30 tests, Vite production build, Android Gradle build, and artifact uploads passed.
+- [x] [Run #169](https://github.com/kage049754/Schedule-/actions/runs/44162564899) completed successfully; all 32 tests, Vite production build, Android Gradle build, and artifact uploads passed.
 - [x] Inspected Run #31 logs and confirmed the audit report lists 13 findings (2 moderate, 11 high); no dependency remediation is claimed yet.
 - [x] Four schedule rule tests passed: adjacency, overlap rejection, inactive-slot handling, and merge criteria.
 - [x] Vite production build succeeded; `dist/index.html` was verified.
@@ -56,7 +56,7 @@
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [x] Added notification actions for Snooze 10 min and Dismiss; CI compiled them into the Android app.
 - [ ] Add a bundled custom alarm sound and test actual sound/vibration delivery on device.
-- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #160](https://github.com/kage049754/Schedule-/actions/runs/44161622055).
+- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #169](https://github.com/kage049754/Schedule-/actions/runs/44162564899).
 - [x] Verified widget layout/resources and provider/plugin classes are packaged in the Run #144 APK; physical launcher placement and refresh behavior still need device testing.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
