@@ -21,7 +21,7 @@ export default function SettingsPage() {
     setReminderBusy(true); setError(''); setNotice('')
     try {
       let permissionNotice = ''
-      if (reminders.classesEnabled || reminders.tasksEnabled) {
+      if (reminders.classesEnabled || reminders.activitiesEnabled || reminders.tasksEnabled) {
         const permission = await requestReminderPermission()
         if (permission.display !== 'granted' && permission.display !== 'unsupported') permissionNotice = 'Preferences saved, but Android notification permission is disabled. Enable it in app settings to receive alerts.'
       }
