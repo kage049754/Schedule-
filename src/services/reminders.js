@@ -79,18 +79,19 @@ async function ensureReminderChannel(vibrationEnabled) {
 export async function rescheduleLocalReminders(settingsOverride = null) {
   if (!Capacitor.isNativePlatform()) return { scheduled: 0, skipped: true }
   const settings = settingsOverride || await getReminderSettings()
-  const permission = await LocalNotifications.checkPermissions()
-  if (permission.display !== 'granted') return { scheduled: 0, permissionRequired: true }
-  const channelId = await ensureReminderChannel(settings.vibrationEnabled)
-  const [slots, subjects, tasks, pending] = await Promise.all([
-    db.scheduleSlots.toArray(), db.subjects.toArray(), db.tasks.toArray(), LocalNotifications.getPending(),
-  ])
+  const pending = await LocalNotifications.getPending()
   const managed = pending.notifications.filter((item) =>
     (item.id >= CLASS_ID_BASE && item.id < 1800000) ||
     (item.id >= TASK_ID_BASE && item.id < 2800000) ||
     item.id === 1900001
   )
   if (managed.length) await LocalNotifications.cancel({ notifications: managed.map(({ id }) => ({ id })) })
+  const permission = await LocalNotifications.checkPermissions()
+  if (permission.display !== 'granted') return { scheduled: 0, permissionRequired: true }
+  const channelId = await ensureReminderChannel(settings.vibrationEnabled)
+  const [slots, subjects, tasks] = await Promise.all([
+    db.scheduleSlots.toArray(), db.subjects.toArray(), db.tasks.toArray(),
+  ])
   const candidates = buildReminderCandidates({ slots, subjects, tasks, settings, now: new Date(), days: 30 })
   const notifications = candidates.map((item) => ({
     id: stableNotificationId(item.key, item.kind === 'class' ? CLASS_ID_BASE : TASK_ID_BASE),
