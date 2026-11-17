@@ -2,7 +2,7 @@
 
 ## Current milestone: Live synchronization, reminders, native widget, and APK verification
 
-**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 34 tests pass in [Run #181](https://github.com/kage049754/Schedule-/actions/runs/44163306073); latest Android APK extracted and checked  
+**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 36 tests pass in [Run #190](https://github.com/kage049754/Schedule-/actions/runs/44164049786); latest Android APK extracted and checked  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -41,7 +41,7 @@
 
 ### Current verification
 - [x] [Run #27](https://github.com/kage049754/Schedule-/actions/runs/44149678881) completed successfully.
-- [x] [Run #181](https://github.com/kage049754/Schedule-/actions/runs/44163306073) completed successfully; all 34 tests, Vite production build, Android Gradle build, and artifact uploads passed.
+- [x] [Run #190](https://github.com/kage049754/Schedule-/actions/runs/44164049786) completed successfully; all 36 tests, Vite production build, Android Gradle build, and artifact uploads passed.
 - [x] Inspected Run #31 logs and confirmed the audit report lists 13 findings (2 moderate, 11 high); no dependency remediation is claimed yet.
 - [x] Four schedule rule tests passed: adjacency, overlap rejection, inactive-slot handling, and merge criteria.
 - [x] Vite production build succeeded; `dist/index.html` was verified.
@@ -66,7 +66,7 @@
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and live today/week/month/all-time reports are date-scoped; Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
-- Settings: local profile (display name, program, year/section), backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Module visibility/order, appearance, and custom alarm sound remain.
+- Settings: local profile, bottom-navigation module visibility/order, backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Appearance and custom alarm sound remain.
 - Android: CI generates the Capacitor project and successfully builds a debug APK. Run #160 APK extracted at 4,223,730 bytes; SHA-256 `80459e5165ff1b74d452c157f9d62936dfe56f4c3bcf00f2e0dd94ae29bb7327`. Widget resources/provider/plugin and reminder action strings are packaged. Physical-device install/display/action QA remains.
 
 ### Next actions selected from current gaps
