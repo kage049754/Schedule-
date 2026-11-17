@@ -1,4 +1,4 @@
-import { db } from '../database/db'
+import { db } from '../database/db.js'
 
 export function normalizeNote(input) {
   const title = String(input.title || '').trim()
