@@ -1,11 +1,13 @@
 export function reminderDefaults() {
-  return { classesEnabled: true, tasksEnabled: true, leadMinutes: 10, vibrationEnabled: true }
+  return { classesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true }
 }
 
 export function buildReminderCandidates({ slots = [], subjects = [], tasks = [], settings = reminderDefaults(), now = new Date(), days = 30 }) {
   const subjectById = new Map(subjects.map((item) => [item.id, item]))
   const result = []
   const lead = Math.max(0, Math.min(120, Number(settings.leadMinutes) || 0))
+  const taskLeadDays = Math.max(0, Math.min(7, Number(settings.taskLeadDays) || 0))
+  const taskReminderTime = /^([01]\\d|2[0-3]):[0-5]\\d$/.test(settings.taskReminderTime || '') ? settings.taskReminderTime : '08:00'
   if (settings.classesEnabled) {
     for (let offset = 0; offset < days; offset += 1) {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset)
@@ -26,9 +28,9 @@ export function buildReminderCandidates({ slots = [], subjects = [], tasks = [],
     for (const task of tasks) {
       if (task.completed || !task.dueDate) continue
       const [year, month, day] = task.dueDate.split('-').map(Number)
-      const at = new Date(year, month - 1, day, 8, 0, 0, 0)
+      const at = new Date(year, month - 1, day - taskLeadDays, Number(taskReminderTime.slice(0, 2)), Number(taskReminderTime.slice(3, 5)), 0, 0)
       if (at <= now || at.getTime() > now.getTime() + days * 86400000) continue
-      result.push({ kind: 'task', key: `task-${task.id}-${task.dueDate}`, at, title: `Task deadline: ${task.title}`, body: 'This task is due today.' })
+      result.push({ kind: 'task', key: `task-${task.id}-${task.dueDate}-${taskLeadDays}-${taskReminderTime}`, at, title: `Task deadline: ${task.title}`, body: taskLeadDays ? `Due in ${taskLeadDays} day${taskLeadDays === 1 ? '' : 's'}.` : 'This task is due today.' })
     }
   }
   return result
