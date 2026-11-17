@@ -18,20 +18,20 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 |---|---|---|---|
 | 0 | Foundation | React/Vite/Tailwind/Capacitor setup, scripts, conventions | Complete (CI verified) |
 | 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Initial shell complete; polish pending |
-| 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Initial local summaries implemented; finance period logic pending |
+| 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Implemented; allowance balance uses active date range |
 | 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Initial timetable and subject CRUD implemented; editing/activities/tests pending |
 | 4 | Notifications and reminders | Local notifications for upcoming classes, task deadlines, and important planner events; configurable lead time, channels, sound, vibration, and quiet hours | Planned |\n| 4A | Alarm and vibration | Reliable scheduled class/deadline alerts with alarm-style full-screen or high-priority behavior where Android permits; vibration pattern and snooze/dismiss controls | Planned |\n| 4B | Home-screen widget | Native Android home-screen widget showing next class, countdown, today's schedule, and nearest deadline; tap-through navigation and periodic refresh | Planned |
-| 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Planned |
+| 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Implemented; category spending limits and reports remain |
 | 6 | Spending limits | Category budgets and spent/remaining indicators | Planned |
-| 7 | Savings | Goals, contributions, saved totals, progress | Planned |
-| 8 | Notepad | Personal, lecture, and subject-linked notes | Planned |
-| 9 | Tasks | Assignments, deadlines, priorities, checklists, completion | Planned |
+| 7 | Savings | Goals, contributions, saved totals, progress | Implemented; goal tracking and withdrawal validation |
+| 8 | Notepad | Personal, lecture, and subject-linked notes | Implemented; search, edit, pin, archive, restore, delete |
+| 9 | Tasks | Assignments, deadlines, priorities, checklists, completion | Implemented; pending, overdue, completed views and checklist CRUD |
 | 10 | Dashboard integration | Combine academic and financial summaries | Planned |
 | 11 | Settings | Profile, dashboard customization, modules, appearance, reminders | Planned |
 | 12 | Backup and recovery | Local JSON export/import with validation | Planned |
 | 13 | QA | Offline, persistence, calculation, conflict, date and accessibility checks | Planned |
-| 14 | Android packaging | Capacitor Android project, identity, permissions, icons | Planned |
-| 15 | Release | CI build, APK generation, artifact and install verification | Planned |\n| 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, vibration, Do Not Disturb behavior, reboot rescheduling, battery restrictions, and widget refresh on supported Android versions | Planned |
+| 14 | Android packaging | Capacitor Android project, identity, permissions, icons | CI generation and debug APK build in progress |
+| 15 | Release | CI build, APK generation, artifact and install verification | Debug APK pipeline added; awaiting first completed APK artifact |\n| 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, vibration, Do Not Disturb behavior, reboot rescheduling, battery restrictions, and widget refresh on supported Android versions | Planned |
 
 ### Detailed expected behavior
 
