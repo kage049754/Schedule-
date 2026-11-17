@@ -26,7 +26,7 @@ export default function SettingsPage() {
         if (permission.display !== 'granted' && permission.display !== 'unsupported') permissionNotice = 'Preferences saved, but Android notification permission is disabled. Enable it in app settings to receive alerts.'
       }
       await saveReminderSettings(reminders)
-      setNotice(permissionNotice || 'Reminder settings saved. Pending class and deadline alerts were refreshed.')
+      setNotice(permissionNotice || 'Reminder settings saved. Pending class, activity, and deadline alerts were refreshed.')
       const exact = await checkExactAlarmAccess()
       setExactAlarm(exact.exact_alarm || 'unsupported')
     } catch (reason) { setError(reason?.message || 'Unable to save reminder settings.') }
