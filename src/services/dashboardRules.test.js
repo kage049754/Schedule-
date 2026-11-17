@@ -46,3 +46,15 @@ test('dashboard recent transactions includes new and edited ledger records in da
     ['income', 'Allowance', 20000],
   ])
 })
+
+
+test('future-dated income and expenses do not change the current available balance', () => {
+  const summary = calculateFinanceSummary({
+    allowances: [{ amount: 10000, startDate: '2026-11-16', endDate: '2026-11-22' }],
+    income: [{ amount: 5000, date: '2026-11-18' }, { amount: 9000, date: '2026-11-20' }],
+    expenses: [{ amount: 2000, date: '2026-11-18' }, { amount: 7000, date: '2026-11-21' }],
+  }, '2026-11-18')
+  assert.equal(summary.incomeTotal, 14000)
+  assert.equal(summary.expenseTotal, 9000)
+  assert.equal(summary.availableBalance, 13000)
+})
