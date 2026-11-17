@@ -107,7 +107,8 @@ jobs:
           let xml = fs.readFileSync(file, 'utf8')
           const permission = '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'
           if (!xml.includes('android.permission.RECEIVE_BOOT_COMPLETED')) {
-            xml = xml.replace(/<application\\b/, `${permission}\\n    <application`)
+            xml = xml.replace(/<application\b/, `${permission}
+    <application`)
           }
           const receiver = `
               <receiver
@@ -121,7 +122,8 @@ jobs:
                       android:resource="@xml/schedule_widget_info" />
               </receiver>
           `
-          if (!xml.includes('ScheduleWidgetProvider')) xml = xml.replace('</application>', `${receiver}\\n</application>`)
+          if (!xml.includes('ScheduleWidgetProvider')) xml = xml.replace('</application>', `${receiver}
+</application>`)
           fs.writeFileSync(file, xml)
           NODE
           grep -q 'ScheduleWidgetProvider' android/app/src/main/AndroidManifest.xml
