@@ -18,7 +18,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 | Income add/edit/delete | Budget totals, recent transactions, Dashboard available balance |
 | Expense add/edit/delete | Budget totals, category limit usage, recent transactions, Dashboard available balance |
 | Savings goal or entry change | Budget goal progress and Dashboard total savings |
-| Subject add/edit/delete | Schedule subject choices, subject-linked Notepad/Tasks choices, class reminder labels |
+| Subject add/edit/delete | Schedule subject choices, subject-linked Notepad/Tasks choices, class reminder labels; deleting a subject unlinks but preserves its notes and tasks |
 | Schedule slot add/edit/delete | Weekly timetable, Dashboard today's classes, next-class calculations, local class reminders |
 | Task add/edit/complete/delete | Task list, Dashboard pending/overdue counts and previews, local deadline reminders |
 | Note add/edit/archive/delete | Notepad list and search results |
