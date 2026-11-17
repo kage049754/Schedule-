@@ -58,3 +58,27 @@ test('invalid task reminder time falls back to 8 AM', () => {
   assert.equal(candidates[0].at.getHours(), 8)
   assert.equal(candidates[0].at.getMinutes(), 0)
 })
+
+test('activity reminders use the selected lead time and repeat on the chosen weekday', () => {
+  const now = new Date(2026, 10, 18, 7, 0)
+  const candidates = buildReminderCandidates({
+    now, days: 2,
+    settings: { ...reminderDefaults(), classesEnabled: false, tasksEnabled: false, activitiesEnabled: true, leadMinutes: 10 },
+    activities: [{ id: 12, title: 'Study group', day: 3, startMinutes: 8 * 60, location: 'Library' }],
+  })
+  assert.equal(candidates.length, 1)
+  assert.equal(candidates[0].kind, 'activity')
+  assert.equal(candidates[0].at.getHours(), 7)
+  assert.equal(candidates[0].at.getMinutes(), 50)
+  assert.match(candidates[0].title, /Study group/)
+  assert.match(candidates[0].body, /Library/)
+})
+
+test('activity reminders can be disabled independently', () => {
+  const candidates = buildReminderCandidates({
+    now: new Date(2026, 10, 18, 7, 0), days: 2,
+    settings: { ...reminderDefaults(), classesEnabled: false, tasksEnabled: false, activitiesEnabled: false },
+    activities: [{ id: 13, title: 'Meeting', day: 3, startMinutes: 9 * 60 }],
+  })
+  assert.equal(candidates.length, 0)
+})
