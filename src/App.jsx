@@ -58,11 +58,11 @@ function formatTime(minutes = 0) {
 }
 
 function Dashboard() {
-  const { todaysClasses, todaysActivities = [], pendingTasks, pendingTaskCount, overdueTaskCount, availableBalance, savingsTotal, recentTransactions = [], error } = useDashboard()
+  const { profile, todaysClasses, todaysActivities = [], pendingTasks, pendingTaskCount, overdueTaskCount, availableBalance, savingsTotal, recentTransactions = [], error } = useDashboard()
   return (
     <div className="space-y-6">
       <section>
-        <p className="text-sm text-slate-500">Your day, organized.</p>
+        <p className="text-sm text-slate-500">{profile?.displayName ? `Welcome back, ${profile.displayName}.` : "Your day, organized."}</p>
         <h2 className="mt-1 text-2xl font-bold text-slate-800">Daily overview</h2>
       </section>
       {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
