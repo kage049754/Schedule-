@@ -6,6 +6,7 @@ import { formatPeso, toCentavos } from '../utils/money'
 import { toLocalDateKey } from '../utils/dates'
 import { addAllowance, addIncome, addExpense, addExpenseCategory, addSavingsGoal, addSavingsEntry, deleteMoneyRecord } from '../services/budget'
 import CategoryLimits from './CategoryLimits'
+import { calculateFinanceSummary } from '../services/dashboardRules'
 
 const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-forest-500 focus:ring-2 focus:ring-forest-100'
 const today = toLocalDateKey()
@@ -41,11 +42,8 @@ export default function BudgetPage() {
   }, [])
 
   const totals = useMemo(() => {
-    const activeAllowance = data.allowances.filter((item) => item.startDate <= today && item.endDate >= today).reduce((sum, item) => sum + Number(item.amount || 0), 0)
-    const incomeTotal = data.income.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-    const expenseTotal = data.expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0)
-    const saved = data.entries.reduce((sum, item) => sum + (item.type === 'withdrawal' ? -item.amount : item.amount), 0)
-    return { allowance: activeAllowance, income: incomeTotal, expenses: expenseTotal, balance: activeAllowance + incomeTotal - expenseTotal, saved }
+    const summary = calculateFinanceSummary({ allowances: data.allowances, income: data.income, expenses: data.expenses, savingsEntries: data.entries }, today)
+    return { allowance: summary.allowanceTotal, income: summary.incomeTotal, expenses: summary.expenseTotal, balance: summary.availableBalance, saved: summary.savingsTotal }
   }, [data, today])
 
   const goalBalances = useMemo(() => new Map(data.goals.map((item) => [item.id, data.entries.filter((entry) => entry.goalId === item.id).reduce((sum, entry) => sum + (entry.type === 'withdrawal' ? -entry.amount : entry.amount), 0)])), [data])
