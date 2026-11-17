@@ -5,7 +5,8 @@ import { buildRecentTransactions, calculateFinanceSummary } from './dashboardRul
 export async function getDashboardSnapshot(now = new Date()) {
   const today = toLocalDateKey(now)
   const day = now.getDay()
-  const [slots, activities, subjects, tasks, allowances, income, expenses, savingsEntries] = await Promise.all([
+  const [profile, slots, activities, subjects, tasks, allowances, income, expenses, savingsEntries] = await Promise.all([
+    db.profile.get('local'),
     db.scheduleSlots.where('day').equals(day).toArray(),
     db.activities.where('day').equals(day).toArray(),
     db.subjects.toArray(),
@@ -34,6 +35,7 @@ export async function getDashboardSnapshot(now = new Date()) {
 
   return {
     today,
+    profile: profile || null,
     todaysClasses,
     todaysActivities,
     pendingTasks: pendingTasks.slice(0, 5),
