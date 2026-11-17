@@ -1,8 +1,8 @@
 # Implementation status
 
-## Current milestone: Phase 5–9 — Budget, Savings, Notepad, and Tasks
+## Current milestone: Live synchronization, reminders, native widget, and APK verification
 
-**Status:** Budget/Savings, Notepad, and Tasks screens implemented; latest web build and all 27 tests verified in CI  
+**Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK built and extracted; 29 tests pending latest CI verification  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
@@ -55,30 +55,31 @@
 - [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [ ] Add custom alarm sound and snooze/dismiss notification actions; test actual sound/vibration delivery on device.
-- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #120](https://github.com/kage049754/Schedule-/actions/runs/44157472735).\n- [ ] Verify manifest registration and launcher placement, refresh behavior, and physical-device display on an Android device.
+- [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #144](https://github.com/kage049754/Schedule-/actions/runs/44159146540).
+- [x] Verified widget layout/resources and provider/plugin classes are packaged in the Run #144 APK; physical launcher placement and refresh behavior still need device testing.
 - [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
-- Dashboard: reactive class/task/finance summaries, recent income/expense activity, and period-aware allowance totals are wired. Date-scoped finance reporting remains.
-- Schedule: weekly timetable, subject management, transactional class/subject edits, conflict checks, and cascade-safe subject unlinking are implemented; personal activities remain.
+- Dashboard: reactive class, activity, task, and finance summaries; recent income/expense activity; and period-aware allowance totals are wired. Date-scoped finance reporting remains.
+- Schedule: weekly timetable, subject/class edits, personal activity CRUD, cross-conflict checks, and cascade-safe subject unlinking are implemented.
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits are date-scoped and Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
-- Settings: local backup export/restore and class/task reminder controls are implemented; profile, module visibility/order, appearance, and richer alarm controls remain.
-- Android: CI generates the Capacitor project and successfully builds a debug APK; native widget source is now injected into the generated project and awaits its first verified build. Physical-device install/display QA remains.
+- Settings: local backup export/restore and class/activity/task reminder controls are implemented; profile, module visibility/order, appearance, custom alarm sound, and snooze actions remain.
+- Android: CI generates the Capacitor project and successfully builds a debug APK. Run #144 APK extracted at 4,223,385 bytes; SHA-256 `8ee3e49e584fa71adc418af7cfc8647231b4c7fd54633bf8fe1521d86c5fa6ce`. Widget resources and provider/plugin classes are packaged. Physical-device install/display QA remains.
 
 ### Next actions selected from current gaps
-1. Finish the current CI cycle, inspect unit-test and Android Gradle logs, download the newest APK artifact, and verify its contents/checksum.
-2. Implement the native Android home-screen widget with next class, countdown, room, and nearest task deadline; keep its data local and refresh on database changes/time boundaries.
-3. Complete alarm behavior: custom sound options, snooze/dismiss actions, reboot rescheduling, and Android permission/battery/Do Not Disturb fallbacks.
-4. Add personal activities and connect them to the Dashboard, reminders, and widget where appropriate.
-5. Complete date-scoped finance reports, Settings profile/module customization, and full offline/accessibility/persistence tests.
+1. Verify the new Dexie v2 full-schema declaration preserves all v1 stores for existing installations.
+2. Test activity reminder scheduling and independent opt-out; run the new CI build and inspect logs.
+3. Implement reboot-safe reminder recovery and custom notification actions/sound where supported by Capacitor.
+4. Add notification/widget physical-device QA instructions and test installation, permission flows, vibration, widget placement, and refresh on the Infinix phone.
+5. Complete date-scoped finance reports, Settings profile/module customization, and accessibility/persistence checks.
 6. Review and safely remediate remaining dependency audit findings without incompatible major upgrades; add a reproducible lockfile.
-7. Verify the release APK and request separate physical-device QA before production signing/release.
+7. Prepare a signed release APK after debug APK behavior is confirmed on-device.
   
 ### Important limitations
 - No backend, login, cloud database, or sync is part of this project.
-- A debug APK has been generated by CI; the newest app version still needs artifact verification and physical-device testing.
+- A debug APK has been generated, extracted, and package contents checked from Run #144; installation and physical-device behavior remain unverified.
 - A successful Vite build is not evidence of Android packaging or installation.
 - Browser local notifications cannot replace Android alarms when the app is closed; use the Capacitor Android notification path and test it on devices.
 
