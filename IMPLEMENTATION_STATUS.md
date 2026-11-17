@@ -1,52 +1,64 @@
 # Implementation status
 
-## Current milestone: Phase 3 — CampusOS-style Schedule
+## Current milestone: Phase 3 — Schedule reliability and research-driven QA
 
-**Status:** Schedule editor implemented; latest CI build is running  
+**Status:** Schedule feature implementation builds successfully; new automated rule tests are added and awaiting CI verification  
 **Repository:** kage049754/Schedule-  
 **Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
 
-### Completed
-- [x] Located the Schedule- repository and confirmed it was empty before initialization.
-- [x] Added the complete roadmap and module behavior to README.md.
-- [x] Added React/Vite entry point, mobile shell, bottom navigation, and module routes.
-- [x] Added Tailwind CSS and Capacitor configuration.
-- [x] Added Dexie.js local database schema for profile, subjects, schedule slots, activities, allowance, income, expenses, categories, savings, notes, tasks, checklist items, and settings.
-- [x] Added local PHP peso formatting using integer centavos.
-- [x] Added local date/time helpers.
-- [x] Added local JSON backup export and validation/restore service.
-- [x] Added live dashboard queries for today's classes, pending/overdue tasks, available money, and savings.
-- [x] Added subject creation with duplicate subject-code protection.
-- [x] Added weekly timetable view, Lecture/Lab selection, room assignment, and adjacent-slot visual merging.
-- [x] Added transaction-protected overlap validation; overlapping classes on the same day are rejected and existing entries are not overwritten.
-- [x] Added timetable and subject deletion actions.
-- [x] Added GitHub Actions web build and artifact upload.
+### Completed and previously verified
+- [x] React/Vite app shell, mobile navigation, route structure, Tailwind theme, and Capacitor configuration.
+- [x] Dexie.js local schema for profile, subjects, schedule slots, activities, allowance, income, expenses, categories, savings, notes, tasks, checklists, and settings.
+- [x] Local PHP peso formatter and date/time helpers.
+- [x] Local JSON backup export and validation/restore service.
+- [x] Dashboard local queries for today's classes, pending/overdue tasks, balance, and savings.
+- [x] Subject creation with duplicate-code protection.
+- [x] Weekly schedule editor with Lecture/Lab, room selection, and adjacent matching slot merging.
+- [x] Transaction-protected overlap prevention.
+- [x] GitHub Actions production web build and artifact upload.
+- [x] Earlier verified web build: [Run #20](https://github.com/kage049754/Schedule-/actions/runs/44149371333), successful.
 
-### Verified build evidence
-- [x] [Run #6](https://github.com/kage049754/Schedule-/actions/runs/44148812506) passed dependency installation, production build, output verification, and artifact upload.
-- [x] [Run #15](https://github.com/kage049754/Schedule-/actions/runs/44149054438) passed after local database and dashboard integration. Its web artifact was uploaded (96,050 bytes).
-- [ ] Schedule feature build: latest run #18 is in progress; do not mark this phase complete until its actual result is inspected.
+### Research and engineering improvements in this iteration
+- [x] Reviewed Local Study OS for offline academic planning, task prioritization, and JSON backup patterns.
+- [x] Reviewed Semester Desk for Android APK automation, local reminders, and offline flow testing.
+- [x] Reviewed official Dexie guidance for live queries, transaction safety, and IndexedDB patterns.
+- [x] Added docs/ENGINEERING_RESEARCH.md with references, decisions, and the research-to-implementation workflow.
+- [x] Updated README with an independent engineering and research policy.
+- [x] Corrected schedule day columns to Monday–Saturday.
+- [x] Corrected deletion of visually merged adjacent timetable entries so all represented records are deleted together.
+- [x] Extracted pure overlap and slot-merging rules into src/services/scheduleRules.js.
+- [x] Added Node tests for adjacency, overlap, inactive entries, and merging.
+- [x] Added npm test to GitHub Actions before production build.
+
+### Current verification
+- [ ] Latest CI run after test integration must complete successfully before marking these fixes verified.
+- [ ] Check the uploaded artifact after the run completes.
+- [ ] The previous run #20 was a web build only; it was not an APK build.
 
 ### Current feature status
-- Dashboard: live local summaries are wired; class/task detail lists update from IndexedDB.
-- Schedule: first functional implementation is committed. Subject and timetable records are stored locally.
-- Budget, Notepad, Tasks, Settings, and local reminders: screens/services still need full feature implementation.
-- Backup: export/restore service exists; user-facing Settings UI is not yet connected.
+- Dashboard: initial local summaries are wired; finance calculations still need period-aware allowance and expense handling.
+- Schedule: initial functional weekly timetable and subject management are implemented; activity entries, edit flows, and reminder scheduling remain.
+- Budget/Savings: data schema and formatting foundations exist; user-facing CRUD and accurate period ledger calculations remain.
+- Notepad: schema exists; user-facing editor/search/subject linking remain.
+- Tasks: schema exists; user-facing assignment/checklist/deadline flows remain.
+- Settings: route is a placeholder; user-facing customization and backup controls remain.
+- Android: Capacitor config exists, but native Android project/APK generation and install verification remain.
 
-### Next actions
-1. Inspect the actual CI result for the Schedule implementation; fix any failure from logs and rebuild.
-2. Add schedule activities and editing support, plus automated conflict/merge tests.
-3. Add local class reminder scheduling and permission handling.
-4. Implement Budget and Savings ledger screens and calculations.
-5. Implement subject-linked Notepad and Tasks.
-6. Complete Settings customization, backup UI, offline QA, and Android APK packaging.
+### Next actions selected from current gaps
+1. Verify the latest test + build workflow; fix from actual logs if it fails.
+2. Add edit/update operations and activity entries to Schedule; add reminder configuration and Android notification handling.
+3. Implement Budget and Savings ledger with period-aware allowance and integer-centavo calculations.
+4. Implement subject-linked Notepad and Tasks.
+5. Implement Settings, module customization, backup UI, and language selection only after a language decision.
+6. Add full offline, accessibility, calculation, persistence, and Android flow tests.
+7. Generate and verify a real APK, then separately request physical-device testing.
 
-### Not yet completed
-- No native Android project has been generated.
-- No APK has been generated or physically tested.
-- The current schedule UI is an initial functional version, not final visual polish.
-- A passing web build is not proof of a completed Android APK.
+### Important limitations
+- No backend, login, cloud database, or sync is part of this project.
+- No APK has been generated or physically tested yet.
+- A successful Vite build is not evidence of Android packaging or installation.
+- Browser local notifications cannot replace Android alarms when the app is closed; use the Capacitor Android notification path and test it on devices.
 
-### Progress rule
-A task is complete only after its relevant build/test succeeds. APK completion additionally requires a generated artifact and verification that the APK file is present and valid. Physical-device testing is separate from CI/emulator checks.
+### Development rule
+Inspect → research → plan the smallest useful change → implement → test → wait for completed CI → inspect logs → fix → rebuild → verify artifacts → update progress → select the next task. Do not stop merely because a commit or queued workflow exists. Continue while the conversation and available tools remain active; do not claim background work after the response ends.
