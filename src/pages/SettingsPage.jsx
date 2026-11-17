@@ -8,7 +8,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const [reminders, setReminders] = useState({ classesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true })
+  const [reminders, setReminders] = useState({ classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true })
   const [exactAlarm, setExactAlarm] = useState('unknown')
   const [reminderBusy, setReminderBusy] = useState(false)
 
@@ -119,6 +119,7 @@ export default function SettingsPage() {
       <section className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
         <div><h3 className="font-semibold text-slate-800">Notifications and reminders</h3><p className="mt-1 text-xs leading-5 text-slate-500">Local alerts are scheduled on this device. Android notification permission and battery settings can affect delivery.</p></div>
         <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Upcoming classes</strong><span className="text-xs text-slate-400">Alert before each class</span></span><input type="checkbox" checked={reminders.classesEnabled} onChange={(e) => setReminders({ ...reminders, classesEnabled: e.target.checked })} /></label>
+        <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Personal activities</strong><span className="text-xs text-slate-400">Alert before weekly activities too</span></span><input type="checkbox" checked={reminders.activitiesEnabled !== false} onChange={(e) => setReminders({ ...reminders, activitiesEnabled: e.target.checked })} /></label>
         <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Task deadlines</strong><span className="text-xs text-slate-400">Alert before or on the due date</span></span><input type="checkbox" checked={reminders.tasksEnabled} onChange={(e) => setReminders({ ...reminders, tasksEnabled: e.target.checked })} /></label>
         <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Class reminder lead time</span><select value={reminders.leadMinutes} onChange={(e) => setReminders({ ...reminders, leadMinutes: Number(e.target.value) })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value={0}>At class start</option><option value={5}>5 minutes before</option><option value={10}>10 minutes before</option><option value={15}>15 minutes before</option><option value={30}>30 minutes before</option><option value={60}>1 hour before</option></select></label>
         <div className="grid grid-cols-2 gap-3">
