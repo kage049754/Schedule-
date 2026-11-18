@@ -82,3 +82,9 @@ test('activity reminders can be disabled independently', () => {
   })
   assert.equal(candidates.length, 0)
 })
+
+test('reminder defaults enable the bundled chime and vibration', () => {
+  const settings = reminderDefaults()
+  assert.equal(settings.soundEnabled, true)
+  assert.equal(settings.vibrationEnabled, true)
+})
