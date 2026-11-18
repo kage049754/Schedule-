@@ -167,3 +167,8 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Added direct navigation from dashboard cards and quick actions to the relevant modules.
 - [x] Applied a consistent compact card system, spacing, rounded surfaces, icon treatments, section headings, and timeline layout using the selected appearance palette.
 - [ ] Verify responsive layout, dynamic data updates, and visual consistency across all six palettes on a physical Android device.
+
+### Shared component visual polish
+- [x] Refined app header, page spacing, reusable cards, field controls, buttons, list rows, and bottom navigation.
+- [x] Kept component surfaces neutral and tied to the active appearance palette for consistent presentation across modules.
+- [ ] Verify touch targets and visual scaling on the target Android device.
