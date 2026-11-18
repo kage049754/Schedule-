@@ -1,5 +1,5 @@
 export function reminderDefaults() {
-  return { classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true }
+  return { classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true, soundEnabled: true }
 }
 
 export function buildReminderCandidates({ slots = [], activities = [], subjects = [], tasks = [], settings = reminderDefaults(), now = new Date(), days = 30 }) {
