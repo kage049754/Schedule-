@@ -168,7 +168,18 @@ export default function App() {
 
   const addExpense = async () => {
     try { const amount=parseAmount(form.amount), description=(form.description||'').trim(); if(!description) throw new Error('Enter what the expense was for.');
-      await db.runAsync('INSERT INTO expenses (amount,description,categoryId,date,createdAt) VALUES (?,?,?,?,?)',amount,description,form.categoryId?Number(form.categoryId):null,todayKey(),new Date().toISOString());
+      let category = await db.getFirstAsync("SELECT * FROM categories WHERE lower(name)=lower(?) AND type='expense'",(form.category||'Food').trim());
+      if(!category){const result=await db.runAsync("INSERT INTO categories (name,type,active) VALUES (?,'expense',1)",(form.category||'Food').trim());category={id:result.lastInsertRowId};}
+      await db.runAsync('INSERT INTO expenses (amount,description,categoryId,date,createdAt) VALUES (?,?,?,?,?)',amount,description,category.id,todayKey(),new Date().toISOString());
+      resetForm(); changed();
+    } catch(error){showError(error);}
+  };
+  const addAllowance = async () => {
+    try {
+      const amount=parseAmount(form.allowanceAmount), period=(form.allowancePeriod||'weekly').toLowerCase();
+      if(!['daily','weekly','monthly'].includes(period)) throw new Error('Choose daily, weekly, or monthly.');
+      const range=getAllowanceRange(period);
+      await db.runAsync('INSERT INTO allowances (amount,period,startDate,endDate,createdAt) VALUES (?,?,?,?,?)',amount,period,range.startDate,range.endDate,new Date().toISOString());
       resetForm(); changed();
     } catch(error){showError(error);}
   };
@@ -204,13 +215,15 @@ export default function App() {
   </>;
 
   const renderSchedule = () => <><Heading detail="Monday–Saturday · Local timetable">Schedule</Heading><Card><Text style={styles.cardTitle}>Add a class</Text><Field label="Subject code" value={form.code||''} onChangeText={v=>updateForm('code',v)} placeholder="e.g. ITEC 80"/><Field label="Subject name" value={form.subjectName||''} onChangeText={v=>updateForm('subjectName',v)}/><Field label="Professor (optional)" value={form.professor||''} onChangeText={v=>updateForm('professor',v)}/><Field label="Room" value={form.room||''} onChangeText={v=>updateForm('room',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.day||'1'} onChangeText={v=>updateForm('day',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.start||'08:00'} onChangeText={v=>updateForm('start',v)}/><Field label="End (24-hour)" value={form.end||'09:00'} onChangeText={v=>updateForm('end',v)}/><Field label="Type (Lecture or Lab)" value={form.kind||'Lecture'} onChangeText={v=>updateForm('kind',v)}/><Button title="Add class" onPress={addClass}/></Card>
-    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.classes.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries for today. Add one above; other days are visible on the Dashboard after switching days in the full timetable phase."/>}</Card>
+    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.allClasses.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries for today. Add one above; other days are visible on the Dashboard after switching days in the full timetable phase."/>}</Card>
     <Card><Text style={styles.cardTitle}>Subjects</Text>{data.subjects.map(x=><Item key={x.id} title={x.code+' — '+x.name} detail={x.professor||'Professor not set'}/>)}</Card>
   </>;
 
   const renderBudget = () => <><Heading detail="All amounts are stored as integer centavos.">Budget</Heading><Card><Text style={styles.cardTitle}>Available balance</Text><Text style={styles.balance}>{peso(availableBalance)}</Text><Text style={styles.itemDetail}>Active allowance + income − expenses</Text></Card>
     <Card><Text style={styles.cardTitle}>Add an expense</Text><Field label="Description" value={form.description||''} onChangeText={v=>updateForm('description',v)}/><Field label="Amount (₱)" value={form.amount||''} onChangeText={v=>updateForm('amount',v)} keyboardType="decimal-pad"/><Field label="Category" value={form.category||'Food'} onChangeText={v=>updateForm('category',v)}/><Button title="Save expense" onPress={addExpense}/></Card>
+    <Card><Text style={styles.cardTitle}>Add allowance</Text><Field label="Amount (₱)" value={form.allowanceAmount||''} onChangeText={v=>updateForm('allowanceAmount',v)} keyboardType="decimal-pad"/><Field label="Period (daily / weekly / monthly)" value={form.allowancePeriod||'weekly'} onChangeText={v=>updateForm('allowancePeriod',v)}/><Button title="Save allowance" onPress={addAllowance}/></Card>
     <Card><Text style={styles.cardTitle}>Add income</Text><Field label="Source" value={form.source||''} onChangeText={v=>updateForm('source',v)}/><Field label="Amount (₱)" value={form.incomeAmount||''} onChangeText={v=>updateForm('incomeAmount',v)} keyboardType="decimal-pad"/><Button title="Save income" onPress={addIncome}/></Card>
+    <Card><Text style={styles.cardTitle}>Allowances</Text>{data.allowances.map(x=><Item key={x.id} title={peso(x.amount)+' · '+x.period} detail={x.startDate+' to '+x.endDate} onDelete={()=>remove('allowances',x.id)}/>)}{!data.allowances.length?<Empty text="No allowance periods recorded."/>:null}</Card>
     <Card><Text style={styles.cardTitle}>Expenses</Text>{data.expenses.map(x=><Item key={x.id} title={x.description} detail={x.date} trailing={'−'+peso(x.amount)} onDelete={()=>remove('expenses',x.id)}/>) }{!data.expenses.length?<Empty text="No expenses recorded yet."/>:null}</Card>
     <Card><Text style={styles.cardTitle}>Income</Text>{data.income.map(x=><Item key={x.id} title={x.source} detail={x.date} trailing={'+'+peso(x.amount)} onDelete={()=>remove('income',x.id)}/>) }{!data.income.length?<Empty text="No income recorded yet."/>:null}</Card>
   </>;
