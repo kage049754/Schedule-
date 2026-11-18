@@ -1,6 +1,8 @@
 # Local data synchronization contract
 
-Schedule is a single-device, offline-first planner. Dexie.js is the source of truth for all modules. This is **in-app synchronization**, not cloud synchronization: no records are sent to a server, and a second device does not receive changes automatically.
+Schedule is a single-device, offline-first planner. On the React Native migration branch, Expo SQLite (`schedule-local.db`) is the source of truth for native screens. The preserved `main` branch still uses Dexie.js/IndexedDB. This is **on-device cross-module synchronization**, not cloud synchronization: no records are sent to a server, and a second device does not receive changes automatically.
+
+The React Native shell currently refreshes its shared screen data after successful writes and when the active tab is opened. It does not yet have the old app's full reactive query layer; automatic dependency-wide refresh, backup migration, and widget integration remain migration work.
 
 ## Update flow
 
