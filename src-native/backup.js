@@ -24,7 +24,7 @@ const REQUIRED_FIELDS = {
   profile: ['id'],
   subjects: ['code', 'name'],
   scheduleSlots: ['subjectId', 'day', 'startMinutes', 'endMinutes', 'kind'],
-  activities: ['title', 'day', 'startMinutes', 'endMinutes'],
+  activities: ['title', 'startMinutes', 'endMinutes'],
   allowances: ['amount', 'period', 'startDate', 'endDate'],
   income: ['amount', 'source', 'date'],
   expenses: ['amount', 'description', 'date'],
@@ -64,6 +64,9 @@ export function validateLegacyBackup(payload) {
         if (!hasOwn(row, field) || row[field] === null || row[field] === '') {
           throw new Error(`Missing ${field} in ${tableName} row ${index + 1}.`);
         }
+      }
+      if (tableName === 'activities' && row.day === undefined && !row.date) {
+        throw new Error(`Missing day/date in activities row ${index + 1}.`);
       }
       const key = row.id ?? row.key;
       if (key !== undefined) {
