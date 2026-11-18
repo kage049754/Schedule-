@@ -38,7 +38,7 @@ Schedule is a single-device, offline-first planner. Dexie.js is the source of tr
 
 ## Notification behavior and timing
 
-- Class alerts are generated for the selected lead time before each matching weekly class. Notifications expose **Snooze 10 min** and **Dismiss** actions; snooze creates a one-time local alert and does not change the original class/task record. The default is 10 minutes; supported choices are at class start, 5, 10, 15, 30, or 60 minutes before.
+- Class alerts are generated for the selected lead time before each matching weekly class. Android notification channels support a bundled Schedule chime and independently selectable vibration; channel IDs are versioned because Android does not let apps replace sound settings on an existing channel. Notifications expose **Snooze 10 min** and **Dismiss** actions; snooze creates a one-time local alert and does not change the original class/task record. The default is 10 minutes; supported choices are at class start, 5, 10, 15, 30, or 60 minutes before.
 - Personal activity alerts use the same class lead-time preference and repeat on the activity's selected weekday.
 - Task alerts default to 8:00 AM on the due date; Settings can move the alert to 1, 2, 3, or 7 days before the deadline and choose a local alert time.
 - Completed tasks, deleted tasks, and removed/changed timetable entries must not retain stale managed reminders after the observer refreshes the queue, even if notification permission has been revoked.
