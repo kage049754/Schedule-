@@ -12,7 +12,7 @@ An offline-first student planner and personal finance Android application.
 - Expo Notifications for local Android notifications
 
 ## Offline-only architecture
-There is **no backend**: no server, account system, cloud database, remote API, or synchronization. Core features and user data remain on the device. Internet is only needed to obtain the APK or install development dependencies. The native migration uses SQLite instead of browser IndexedDB; an import path for existing JSON backups is still required before the migration can replace the stable main branch.
+There is **no backend**: no server, account system, cloud database, remote API, or synchronization. Core features and user data remain on the device. Internet is only needed to obtain the APK or install development dependencies. The native migration uses SQLite instead of browser IndexedDB. Version-1 legacy JSON export/import is implemented on the migration branch; verify a real backup round-trip on the target phone before replacing the stable main branch.
 
 ## Roadmap and module behavior
 
@@ -32,9 +32,9 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 9 | Tasks | Assignments, deadlines, priorities, checklists, completion | Implemented; pending, overdue, completed views and checklist CRUD |
 | 10 | Dashboard integration | Live cross-module Dashboard; updates from Dexie records after module changes | Implemented; further reports remain |
 | 11 | Settings | Local profile, navigation modules, reminders, backup controls, and six selectable CampusOS-style color combinations | Implemented on migration branch; physical-device visual QA pending |
-| 12 | Backup and recovery | Local JSON export/import with validation | Planned |
+| 12 | Backup and recovery | Local JSON export/import with validation and transactional SQLite restore | Implemented on migration branch; real-device round-trip pending |
 | 13 | QA | Offline, persistence, calculation, conflict, date and accessibility checks | Planned |
-| 14 | Android packaging | Capacitor Android project, identity, permissions, icons | CI-generated debug APK builds and artifact verification passed |
+| 14 | Android packaging | Expo Prebuild + Gradle ARM64 Android project, package identity, permissions, and native resources | CI-generated debug APK build and verifier passed for current migration build |
 | 15 | Release | CI build, APK generation, artifact integrity and device install verification | Latest debug APK built and extracted in Run #190; physical install and widget placement remain |
 | 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, chime, vibration, Do Not Disturb behavior, reboot restoration, battery restrictions, and widget refresh on supported Android versions | Device testing pending |
 
@@ -92,11 +92,11 @@ For each phase: inspect current code → implement a bounded feature → run che
 Do not mark a phase complete because code was merely written. Build/test evidence is required. Physical-device testing is separate from CI/emulator checks. Before each milestone, inspect the current repo, research relevant documentation/projects, and use available code-review/testing tools or skills where applicable. Keep the project strictly offline: no backend, accounts, cloud sync, or runtime network dependency.
 
 ## Cross-module synchronization
-On `main`, the original web app uses Dexie live queries. On `react-native-migration`, native screens share the local SQLite database and refresh after writes/tab changes; full automatic cross-module refresh is still being ported. No network is required. Budget entries are intended to update Dashboard balance/activity, and schedule/task changes update timetable and local reminders. The native widget and legacy-data import are not yet ported.
+On `main`, the original web app uses Dexie live queries. On `react-native-migration`, all native modules read and write the same on-device SQLite database. Successful writes refresh the local data view, and returning to a module reloads its data; the Dashboard recomputes balance, expenses, savings, class/activity timeline, and task progress from those shared records. Local reminder schedules and the widget snapshot are refreshed from planner data. The native widget provider and legacy JSON import/export are implemented; physical widget behavior and a real Capacitor-backup round-trip remain device-QA items. No network or backend is used.
 
 ## React Native migration status
 
-The first native shell has Dashboard, Schedule, Budget, Notes, Tasks, and Settings tabs, with SQLite-backed core flows. Legacy `schedule-local-backup` version-1 JSON export/import is implemented on the migration branch: imports validate and normalize records, preserve IDs/relationships, and restore transactionally into SQLite; Settings exposes export/share and destructive-confirmed import. CI validation and an actual device round-trip are still pending. Savings, category limits, full task checklists, complete timetable/activity editing, navigation customization, and the native widget remain parity work. Do not uninstall the existing APK or clear its app data until a real backup round-trip succeeds on the target device.
+The React Native migration includes Dashboard, Schedule, Budget, Notes, Tasks, and Settings with SQLite-backed flows for savings, category limits, task checklists, personal activities, module visibility/order, six appearance palettes, reminders, and the Android home-screen widget. Legacy `schedule-local-backup` version-1 JSON export/import validates and normalizes records, preserves IDs/relationships, and restores transactionally; Settings exposes export/share and destructive-confirmed import. Run #258 passed 36 domain tests, produced the ARM64 debug APK, and passed package/bundle verification. Real-device backup round-trip, notification delivery, theme persistence, and widget placement/refresh still require physical-device QA. Keep the existing APK and its data until the backup round-trip is verified.
 
 The React Native CI workflow builds a debug APK with `expo prebuild` and Gradle. See IMPLEMENTATION_STATUS.md for the current build evidence.
 

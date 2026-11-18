@@ -29,11 +29,11 @@
 - [x] Implemented transaction-protected SQLite backup restore and native JSON export. Invalid backups are rejected before writes; failed inserts roll back rather than partially restoring.
 - [x] Added Settings controls to export/share JSON and import via Android document picker with destructive replacement confirmation.
 - [x] Added SQLite `activities.date` migration so legacy calendar dates are retained alongside weekday values.
-- [x] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the workflow APK-verification step in [Run #232](https://github.com/kage049754/Schedule-/actions/runs/44252235863). Artifact download and independent package inspection remain pending.
+- [x] Verified the native Android CI pipeline with all 36 domain tests passing, ARM64 debug APK packaging, package/bundle checks, APK verification, and artifact upload in [Run #258](https://github.com/kage049754/Schedule-/actions/runs/44369204140). The uploaded APK was independently extracted; its 54,292,447-byte package contains the embedded JS bundle and ARM64 native libraries. SHA-256: `e12a944484ed721ec8f699ccf9c1c97d5facdbc96950f54206929269a1a51603`.
 - [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
 - [x] Ported native Budget parity: date-specific income/expense entries, editable category creation by expense entry, daily/weekly/monthly category limits, savings goals, deposits/withdrawals with transaction-protected balance checks, and today/week/month/all-time money reports with transaction deletion.
-- [ ] Complete remaining native parity: native widget port and verification.
-- [x] Added a native Appearance section with persistent Forest (default), Sunset, and Monochrome light themes; palette is applied to app surfaces, cards, fields, buttons, balance/stat accents, and bottom navigation.
+- [x] Implemented native Android home-screen widget provider, React Native/SQLite snapshot bridge, periodic refresh, tap-to-open, and CI packaging. Physical launcher placement, refresh, and reboot behavior remain to be verified on-device.
+- [x] Added a native Appearance section with six persistent coordinated light themes: Forest (default), Ocean, Sunset, Lavender, Rose, and Monochrome. Palette colors apply to app surfaces, cards, fields, buttons, dashboard accents, and bottom navigation.
 - [ ] Verify appearance and Budget preference/data persistence after app restart and visual consistency on the target phone.
 - [ ] Device QA on Android; physical behavior is not yet verified.
 

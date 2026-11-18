@@ -193,3 +193,14 @@ test('dashboard timeline combines classes and personal activities in chronologic
   assert.equal(classes[0].timelineType, undefined, 'the source class record is not mutated');
   assert.equal(activities[0].timelineType, undefined, 'the source activity record is not mutated');
 });
+
+
+test('dashboard timeline keys stay unique when SQLite tables reuse the same numeric id', () => {
+  const timeline = buildDashboardTimeline(
+    [{ id: 1, code: 'ITEC 80', startMinutes: 480, endMinutes: 540 }],
+    [{ id: 1, title: 'Study group', startMinutes: 600, endMinutes: 660 }],
+  );
+
+  assert.deepEqual(timeline.map(item => item.timelineKey), ['class:1', 'activity:1']);
+  assert.equal(new Set(timeline.map(item => item.timelineKey)).size, 2);
+});

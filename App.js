@@ -604,7 +604,7 @@ export default function App() {
 
       <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Today's schedule</Text><Pressable onPress={()=>setTab('schedule')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View timetable</Text></Pressable></View>
       <Card>
-        {todayTimeline.length ? todayTimeline.map((item,index)=><View key={item.id} style={styles.classTimelineRow}>
+        {todayTimeline.length ? todayTimeline.map((item,index)=><View key={item.timelineKey} style={styles.classTimelineRow}>
           <View style={styles.classTimelineTime}><Text style={[styles.classTimeText,{color:ACTIVE_COLORS.forest}]}>{timeLabel(item.startMinutes)}</Text><Text style={[styles.classTimeEnd,{color:ACTIVE_COLORS.muted}]}>{timeLabel(item.endMinutes)}</Text></View>
           <View style={[styles.classTimelineLine,{backgroundColor:ACTIVE_COLORS.line}]}><View style={[styles.classTimelineDot,{backgroundColor:ACTIVE_COLORS.forest}]}/></View>
           <View style={[styles.classTimelineCard,{backgroundColor:ACTIVE_COLORS.cream,borderColor:ACTIVE_COLORS.line}]}>

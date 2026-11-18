@@ -223,8 +223,8 @@ export function findNearestNativeTask(tasks = []) {
 
 export function buildDashboardTimeline(classes = [], activities = []) {
   return [
-    ...classes.map(entry => ({ ...entry, timelineType: 'class' })),
-    ...activities.map(entry => ({ ...entry, timelineType: 'activity' })),
+    ...classes.map(entry => ({ ...entry, timelineType: 'class', timelineKey: `class:${String(entry.id)}` })),
+    ...activities.map(entry => ({ ...entry, timelineType: 'activity', timelineKey: `activity:${String(entry.id)}` })),
   ].sort((a, b) => Number(a.startMinutes) - Number(b.startMinutes)
     || Number(a.endMinutes) - Number(b.endMinutes));
 }
