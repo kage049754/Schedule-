@@ -4,7 +4,17 @@ import {
   StatusBar, StyleSheet, Switch, Text, TextInput, View
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Trash2, GraduationCap, Bell, Plus } from 'lucide-react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+const CalendarDays = (props) => <MaterialCommunityIcons name="calendar-month-outline" {...props}/>;
+const Wallet = (props) => <MaterialCommunityIcons name="wallet-outline" {...props}/>;
+const NotebookPen = (props) => <MaterialCommunityIcons name="notebook-edit-outline" {...props}/>;
+const CheckSquare = (props) => <MaterialCommunityIcons name="checkbox-marked-outline" {...props}/>;
+const LayoutDashboard = (props) => <MaterialCommunityIcons name="view-dashboard-outline" {...props}/>;
+const Settings = (props) => <MaterialCommunityIcons name="cog-outline" {...props}/>;
+const Trash2 = (props) => <MaterialCommunityIcons name="delete-outline" {...props}/>;
+const GraduationCap = (props) => <MaterialCommunityIcons name="school-outline" {...props}/>;
+const Bell = (props) => <MaterialCommunityIcons name="bell-outline" {...props}/>;
+const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, calculateAvailableBalance } from './src-native/domain';
 
