@@ -204,7 +204,7 @@ export default function App() {
   };
   const addTask = async () => {
     try { const title=(form.taskTitle||'').trim(); if(!title) throw new Error('Enter a task title.');
-      const dueDate=(form.dueDate||'').trim(); if(dueDate&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(dueDate)) throw new Error('Use YYYY-MM-DD for the due date.');
+      const dueDate=(form.dueDate||'').trim(); if(dueDate&&!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error('Use YYYY-MM-DD for the due date.');
       const now=new Date().toISOString(); await db.runAsync('INSERT INTO tasks (title,dueDate,priority,completed,createdAt,updatedAt) VALUES (?,?,?,0,?,?)',title,dueDate||null,form.priority||'Normal',now,now); resetForm(); changed();
     } catch(error){showError(error);}
   };
