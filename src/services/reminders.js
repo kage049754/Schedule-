@@ -8,11 +8,10 @@ const TASK_ID_BASE = 2000000
 const ACTIVITY_ID_BASE = 3000000
 const SNOOZE_ID_BASE = 4000000
 const REMINDER_ACTION_TYPE = 'schedule-reminder-actions'
-const REMINDER_CHANNEL_VIBRATE = 'schedule-reminders-vibrate'
-const REMINDER_CHANNEL_SILENT = 'schedule-reminders-silent'
+const REMINDER_CHANNEL_PREFIX = 'schedule-reminders-v2'
 
-function reminderChannelId(vibrationEnabled) {
-  return vibrationEnabled ? REMINDER_CHANNEL_VIBRATE : REMINDER_CHANNEL_SILENT
+function reminderChannelId(vibrationEnabled, soundEnabled = true) {
+  return REMINDER_CHANNEL_PREFIX + (vibrationEnabled ? '-vibrate' : '-silent') + (soundEnabled ? '-chime' : '-quiet')
 }
 
 export async function getReminderSettings() {
@@ -29,6 +28,7 @@ export async function saveReminderSettings(settings) {
     taskLeadDays: Math.max(0, Math.min(7, Number(settings.taskLeadDays) || 0)),
     taskReminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(settings.taskReminderTime || '') ? settings.taskReminderTime : '08:00',
     vibrationEnabled: Boolean(settings.vibrationEnabled),
+    soundEnabled: settings.soundEnabled !== false,
   }
   await db.settings.put({ key: 'reminders', value: safe, updatedAt: new Date().toISOString() })
   await rescheduleLocalReminders(safe)
@@ -56,7 +56,7 @@ export async function sendTestReminder(vibrationEnabled = true) {
   if (!Capacitor.isNativePlatform()) throw new Error('Test notifications are available in the installed Android app.')
   const permission = await requestReminderPermission()
   if (permission.display !== 'granted') throw new Error('Notification permission was not granted.')
-  const channelId = await ensureReminderChannel(vibrationEnabled)
+  const channelId = await ensureReminderChannel(vibrationEnabled, true)
   return LocalNotifications.schedule({ notifications: [{
     id: 1900001,
     title: 'Schedule reminder test',
@@ -68,9 +68,9 @@ export async function sendTestReminder(vibrationEnabled = true) {
   }] })
 }
 
-async function ensureReminderChannel(vibrationEnabled) {
+async function ensureReminderChannel(vibrationEnabled, soundEnabled = true) {
   if (Capacitor.getPlatform() !== 'android') return undefined
-  const channelId = reminderChannelId(vibrationEnabled)
+  const channelId = reminderChannelId(vibrationEnabled, soundEnabled)
   await LocalNotifications.createChannel({
     id: channelId,
     name: vibrationEnabled ? 'Schedule reminders (vibration)' : 'Schedule reminders (silent)',
@@ -78,6 +78,7 @@ async function ensureReminderChannel(vibrationEnabled) {
     importance: 5,
     visibility: 1,
     vibration: Boolean(vibrationEnabled),
+    ...(soundEnabled ? { sound: 'schedule_chime.wav' } : {}),
     lights: true,
     lightColor: '#315C43',
   })
@@ -104,7 +105,7 @@ export async function initializeReminderActionListener() {
     }
     if (actionId !== 'snooze-10') return
     const settings = await getReminderSettings()
-    const channelId = await ensureReminderChannel(settings.vibrationEnabled)
+    const channelId = await ensureReminderChannel(settings.vibrationEnabled, settings.soundEnabled)
     await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: notification.id }] })
     const id = stableNotificationId('snooze-' + notification.id + '-' + Date.now(), SNOOZE_ID_BASE)
     await LocalNotifications.schedule({
@@ -134,7 +135,7 @@ export async function rescheduleLocalReminders(settingsOverride = null) {
   if (managed.length) await LocalNotifications.cancel({ notifications: managed.map(({ id }) => ({ id })) })
   const permission = await LocalNotifications.checkPermissions()
   if (permission.display !== 'granted') return { scheduled: 0, permissionRequired: true }
-  const channelId = await ensureReminderChannel(settings.vibrationEnabled)
+  const channelId = await ensureReminderChannel(settings.vibrationEnabled, settings.soundEnabled)
   const [slots, activities, subjects, tasks] = await Promise.all([
     db.scheduleSlots.toArray(), db.activities.toArray(), db.subjects.toArray(), db.tasks.toArray(),
   ])
