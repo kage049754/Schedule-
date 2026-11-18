@@ -17,11 +17,6 @@
     "react-native": "0.88.0",
     "expo-sqlite": "~58.0.18",
     "expo-notifications": "~58.1.9",
-    "expo-status-bar": "~3.0.9",
-    "expo-file-system": "~20.0.8",
-    "expo-sharing": "~14.0.8",
-    "expo-document-picker": "~14.0.8",
-    "expo-constants": "~18.0.13",
     "lucide-react-native": "^0.468.0",
     "react-native-svg": "15.15.3"
   },
