@@ -20,14 +20,10 @@ const Bell = (props) => <MaterialCommunityIcons name="bell-outline" {...props}/>
 const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
+import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
-const THEMES = {
-  forest: { label: 'Forest', description: 'CampusOS signature green and warm cream', forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', soft: '#edf4ef', red: '#b42318' },
-  sunset: { label: 'Sunset', description: 'Warm terracotta with soft ivory surfaces', forest: '#99543d', forest2: '#b66b4e', cream: '#fbf3ed', white: '#ffffff', ink: '#332720', muted: '#88766c', line: '#eee1d8', soft: '#f7eae1', red: '#b42318' },
-  monochrome: { label: 'Monochrome', description: 'Clean grayscale with restrained contrast', forest: '#343a40', forest2: '#59636d', cream: '#f1f2f3', white: '#ffffff', ink: '#252a2e', muted: '#737b82', line: '#e1e4e6', soft: '#e9ecef', red: '#b42318' }
-};
 let ACTIVE_COLORS = COLORS;
 const TABS = [
   { id: 'home', label: 'Home', Icon: LayoutDashboard },
@@ -110,7 +106,7 @@ export default function App() {
         if (!active) return;
         setDb(database); setRemindersEnabled(reminders !== 'false'); setLeadMinutes(lead);
         setSoundEnabled(sound !== 'false'); setVibrationEnabled(vibration !== 'false');
-        setAppearance(THEMES[savedAppearance] ? savedAppearance : 'forest');
+        setAppearance(normalizeAppearance(savedAppearance));
         await refreshData(database);
       } catch (error) { showError(error); }
       finally { if (active) setBusy(false); }
