@@ -10,7 +10,8 @@ export default {
     plugins: [
       ["expo-notifications", { sounds: ["./assets/schedule_chime.wav"], defaultChannel: "schedule-reminders" }],
       "expo-sqlite",
-      "./plugins/withEmbeddedDebugBundle"
+      "./plugins/withEmbeddedDebugBundle",
+      "./plugins/withScheduleWidget"
     ],
     extra: { architecture: "react-native-expo-sqlite" }
   }

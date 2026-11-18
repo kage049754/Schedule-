@@ -189,3 +189,33 @@ export function filterNativeTasks(tasks = [], view = 'pending', search = '', tod
     return dueA.localeCompare(dueB) || priorityA - priorityB;
   });
 }
+
+
+export function findNextNativeClass(classes = [], now = new Date(), days = 14) {
+  let next = null;
+  for (let offset = 0; offset <= days; offset += 1) {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const weekday = date.getDay();
+    for (const entry of classes) {
+      if (Number(entry.active ?? 1) === 0 || Number(entry.day) !== weekday) continue;
+      const startAt = new Date(date);
+      startAt.setHours(Math.floor(Number(entry.startMinutes) / 60), Number(entry.startMinutes) % 60, 0, 0);
+      if (startAt <= now) continue;
+      if (!next || startAt < next.startAt) {
+        next = {
+          title: entry.code || entry.subjectName || 'Upcoming class',
+          details: [entry.kind || 'Class', entry.room].filter(Boolean).join(' · '),
+          startAt,
+        };
+      }
+    }
+  }
+  return next;
+}
+
+export function findNearestNativeTask(tasks = []) {
+  return tasks
+    .filter(task => Number(task.completed || 0) === 0 && isValidDateKey(task.dueDate))
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate))
+      || String(a.title || '').localeCompare(String(b.title || '')))[0] || null;
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks } from '../src-native/domain.js';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask } from '../src-native/domain.js';
 
 test('money is stored as integer centavos', () => {
   assert.equal(parseMoneyToCentavos('205'), 20500);
@@ -146,4 +146,29 @@ test('native task views filter pending, completed, and overdue items and sort du
   assert.deepEqual(filterNativeTasks(tasks, 'overdue', '', '2026-11-18').map(task => task.id), [2, 3]);
   assert.deepEqual(filterNativeTasks(tasks, 'completed', 'finished', '2026-11-18').map(task => task.id), [4]);
   assert.deepEqual(filterNativeTasks(tasks, 'all', 'database', '2026-11-18').map(task => task.id), [2]);
+});
+
+
+test('native widget selects the next active class and ignores past or inactive slots', () => {
+  const now = new Date(2026, 10, 18, 7, 30);
+  const next = findNextNativeClass([
+    { day: 3, startMinutes: 420, endMinutes: 480, active: 1, code: 'EARLY', kind: 'Lecture', room: 'A1' },
+    { day: 3, startMinutes: 540, endMinutes: 600, active: 0, code: 'CANCELLED', kind: 'Lab', room: 'B2' },
+    { day: 3, startMinutes: 480, endMinutes: 540, active: 1, code: 'ITEC 80', kind: 'Lecture', room: 'A2' },
+    { day: 4, startMinutes: 420, endMinutes: 480, active: 1, code: 'NSTP', kind: 'Class', room: 'Field' },
+  ], now);
+  assert.equal(next.title, 'ITEC 80');
+  assert.equal(next.details, 'Lecture · A2');
+  assert.equal(next.startAt.getTime(), new Date(2026, 10, 18, 8, 0).getTime());
+});
+
+test('native widget selects the nearest unfinished deadline', () => {
+  const task = findNearestNativeTask([
+    { id: 1, title: 'Later', dueDate: '2026-11-25', completed: 0 },
+    { id: 2, title: 'Done', dueDate: '2026-11-17', completed: 1 },
+    { id: 3, title: 'Overdue', dueDate: '2026-11-16', completed: 0 },
+    { id: 4, title: 'No date', dueDate: null, completed: 0 },
+  ]);
+  assert.equal(task.id, 3);
+  assert.equal(findNearestNativeTask([{ title: 'Done', dueDate: '2026-11-18', completed: 1 }]), null);
 });

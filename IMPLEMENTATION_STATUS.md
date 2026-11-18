@@ -150,3 +150,8 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Added searchable pending, overdue, completed, and all-task views with due-date and priority sorting.
 - [x] Added per-task checklist creation, completion toggles, deletion, and transactional cascade deletion when deleting a task.
 - [ ] Verify task/checklist persistence and due-date behavior after app restart on the target Android device.
+
+### Native Android home-screen widget port
+- [x] Added Expo config-plugin wiring for a native Android AppWidgetProvider and React Native bridge.
+- [x] Added SQLite-derived next-class and nearest-unfinished-task widget selection helpers with tests.
+- [ ] Verify widget registration, resource packaging, launcher placement, tap-to-open, and refresh on a physical Android device.

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView,
-  StatusBar, StyleSheet, Switch, Text, TextInput, View
+  StatusBar, StyleSheet, Switch, Text, TextInput, View, NativeModules
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as DocumentPicker from 'expo-document-picker';
@@ -22,7 +22,7 @@ import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { normalizeNavigationPreferences } from './src-native/navigation';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 let ACTIVE_COLORS = COLORS;
@@ -106,6 +106,28 @@ export default function App() {
       database.getAllAsync('SELECT * FROM taskChecklist ORDER BY taskId, position, id')
     ]);
     setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, taskChecklist, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets });
+    const widget = NativeModules.ScheduleWidget;
+    if (widget?.updateSnapshot) {
+      try {
+        const now = new Date();
+        const nextClass = findNextNativeClass(allClasses, now);
+        const nextTask = findNearestNativeTask(tasks);
+        const dueDateLabel = nextTask?.dueDate ? (() => {
+          const [year, month, day] = nextTask.dueDate.split('-').map(Number);
+          const formatted = new Date(year, month - 1, day).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+          return nextTask.dueDate < today ? 'OVERDUE · ' + formatted : 'Due ' + formatted;
+        })() : '';
+        await widget.updateSnapshot({
+          classTitle: nextClass?.title || 'No upcoming class',
+          classDetails: nextClass?.details || 'Your timetable is clear',
+          classStartAt: nextClass?.startAt?.getTime() || 0,
+          taskTitle: nextTask?.title || 'No pending deadline',
+          taskDueDate: dueDateLabel,
+        });
+      } catch (error) {
+        console.warn('Unable to refresh the Schedule home-screen widget.', error);
+      }
+    }
   };
 
   useEffect(() => {
@@ -835,6 +857,7 @@ export default function App() {
       })}
       <Button title="Reset navigation order" secondary onPress={resetNavigationPreferences}/>
     </Card>
+    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Home-screen widget</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Add the Schedule widget from your Android launcher's Widgets list. It shows your next class, room and countdown, plus the nearest unfinished task deadline. It refreshes when local planner records change and periodically while placed on the home screen.</Text></Card>
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Local profile</Text><Field label="Display name" value={form.displayName??data.profile.displayName??''} onChangeText={v=>updateForm('displayName',v)}/><Field label="Program" value={form.program??data.profile.program??''} onChangeText={v=>updateForm('program',v)}/><Field label="Year and section" value={form.yearSection??data.profile.yearSection??''} onChangeText={v=>updateForm('yearSection',v)}/><Button title="Save profile" onPress={saveProfile}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Reminders</Text><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Enable local reminders</Text><Switch value={remindersEnabled} onValueChange={async value=>{setRemindersEnabled(value);await setSetting('remindersEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Field label="Class reminder lead time (minutes)" value={leadMinutes} onChangeText={async value=>{setLeadMinutes(value);await setSetting('leadMinutes',value);}} keyboardType="number-pad"/><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Chime sound</Text><Switch value={soundEnabled} onValueChange={async value=>{setSoundEnabled(value);await setSetting('soundEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Vibration</Text><Switch value={vibrationEnabled} onValueChange={async value=>{setVibrationEnabled(value);await setSetting('vibrationEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Button title="Request notification permission" secondary onPress={async()=>{const result=await Notifications.requestPermissionsAsync();Alert.alert('Notifications',result.granted?'Permission granted.':'Permission not granted.');}}/><Button title="Send test notification" secondary onPress={async()=>{const permission=await Notifications.requestPermissionsAsync();if(!permission.granted){Alert.alert('Permission required','Allow notifications in Android settings first.');return;}await Notifications.scheduleNotificationAsync({content:{title:'Schedule reminder test',body:'Your local notifications are working.',sound:soundEnabled?'schedule_chime.wav':null},trigger:null});Alert.alert('Sent','A local test notification was requested.');}}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Backup and restore</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Export a portable Schedule JSON backup or import a backup from the previous Capacitor app. Import replaces all local records on this device.</Text><Button title="Export local backup" onPress={exportBackup}/><Button title="Import JSON backup" secondary onPress={importBackup}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Privacy and local storage</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Your schedule, budget, notes, tasks, profile, appearance, and navigation preferences stay in the local SQLite database on this device. The planner does not require an account, backend, or cloud database.</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Database: schedule-local.db. Export a JSON backup before uninstalling the app or clearing its storage. Restoring a backup replaces current local records.</Text><Button title="Refresh local data" secondary onPress={changed}/></Card></>;
 
   const screen = {home:renderHome,schedule:renderSchedule,budget:renderBudget,notes:renderNotes,tasks:renderTasks,settings:renderSettings}[tab];
