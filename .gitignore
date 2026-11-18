@@ -9,3 +9,7 @@ android/build
 android/app/build
 *.jks
 *.keystore
+# Expo / React Native
+.expo/
+expo-env.d.ts
+/android/
