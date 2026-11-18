@@ -27,9 +27,11 @@
 - [x] Implemented transaction-protected SQLite backup restore and native JSON export. Invalid backups are rejected before writes; failed inserts roll back rather than partially restoring.
 - [x] Added Settings controls to export/share JSON and import via Android document picker with destructive replacement confirmation.
 - [x] Added SQLite `activities.date` migration so legacy calendar dates are retained alongside weekday values.
-- [ ] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the artifact.
+- [x] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the workflow APK-verification step in [Run #232](https://github.com/kage049754/Schedule-/actions/runs/44252235863). Artifact download and independent package inspection remain pending.
 - [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
 - [ ] Port remaining parity: personal activity CRUD/editor, savings and category limits, note edit/search/pin/archive, task checklists, settings/navigation customization, and native widget.
+- [x] Added a native Appearance section with persistent Forest (default), Sunset, and Monochrome light themes; palette is applied to app surfaces, cards, fields, buttons, balance/stat accents, and bottom navigation.
+- [ ] Verify appearance persistence and visual consistency in the next Android APK build and on the target phone.
 - [ ] Device QA on Android; physical behavior is not yet verified.
 
 ## Previous Capacitor baseline (preserved on main)
@@ -104,7 +106,7 @@ The migration branch now contains the portable backup service (`src-native/backu
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and live today/week/month/all-time reports are date-scoped; Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
-- Settings: local profile, bottom-navigation module visibility/order, backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Appearance and appearance customization remains; physical chime delivery still requires device QA.
+- Settings: local profile, bottom-navigation module visibility/order, backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Appearance now has native Forest, Sunset, and Monochrome presets with local persistence; navigation customization parity remains. Physical chime delivery still requires device QA.
 - Android: CI generates the Capacitor project and successfully builds a debug APK. Run #160 APK extracted at 4,223,730 bytes; SHA-256 `80459e5165ff1b74d452c157f9d62936dfe56f4c3bcf00f2e0dd94ae29bb7327`. Widget resources/provider/plugin and reminder action strings are packaged. Physical-device install/display/action QA remains.
 
 ### Next actions selected from current gaps
