@@ -42,6 +42,8 @@ jobs:
         run: |
           npx expo install --fix
           npx expo-doctor
+      - name: Bundle Android JavaScript
+        run: npx expo export --platform android --output-dir dist-native
       - name: Run native domain tests
         run: node --test tests/*.test.js
       - name: Generate native Android project

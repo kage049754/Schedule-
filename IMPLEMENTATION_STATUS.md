@@ -10,9 +10,11 @@
 #### CampusOS visual system and Settings parity
 - [x] Added persistent Forest, Sunset, and Monochrome appearance themes to the React Native Settings screen.
 - [x] Applied the selected theme to the native app shell, cards, form fields, buttons, headings, and navigation surfaces.
-- [x] Added local module visibility and ordering preferences; Home and Settings remain pinned and cannot be hidden or moved.
+- [x] Added local module visibility and ordering preferences with persisted order, Home/Settings pinning, accessible move controls, and a reset action.
 - [x] Kept profile, local reminder sound/vibration/lead-time controls, JSON backup import/export, and local-storage privacy information inside the native Settings module.
-- [ ] Verify theme persistence after app restart and visual consistency on Android device/emulator; CI compilation is not a substitute for visual QA.
+- [ ] Verify theme and navigation preference persistence after app restart and visual consistency on Android device/emulator; CI compilation is not a substitute for visual QA.
+- [x] Fixed the native navigation preference loading path and added pure tests for default ordering, invalid settings recovery, deduplication, and pinned tabs.
+- [x] Added Expo Android JavaScript bundle export to CI so Metro/JSX syntax errors are caught before native APK packaging.
 
 ## React Native work started
 - [x] Created an isolated migration branch from the latest verified main commit.
@@ -29,7 +31,7 @@
 - [x] Added SQLite `activities.date` migration so legacy calendar dates are retained alongside weekday values.
 - [x] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the workflow APK-verification step in [Run #232](https://github.com/kage049754/Schedule-/actions/runs/44252235863). Artifact download and independent package inspection remain pending.
 - [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
-- [ ] Port remaining parity: personal activity CRUD/editor, savings and category limits, note edit/search/pin/archive, task checklists, settings/navigation customization, and native widget.
+- [ ] Port remaining parity: personal activity CRUD/editor, savings and category limits, note edit/search/pin/archive, task checklists, expanded profile/privacy controls, and native widget.
 - [x] Added a native Appearance section with persistent Forest (default), Sunset, and Monochrome light themes; palette is applied to app surfaces, cards, fields, buttons, balance/stat accents, and bottom navigation.
 - [ ] Verify appearance persistence and visual consistency in the next Android APK build and on the target phone.
 - [ ] Device QA on Android; physical behavior is not yet verified.

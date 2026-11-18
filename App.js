@@ -21,6 +21,7 @@ const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
+import { normalizeNavigationPreferences } from './src-native/navigation';
 import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
@@ -70,7 +71,9 @@ export default function App() {
   const [leadMinutes, setLeadMinutes] = useState('10');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const [appearance, setAppearance] = useState('forest');\n  const [navigationOrder, setNavigationOrder] = useState(TABS.map(item => item.id));\n  const [hiddenTabs, setHiddenTabs] = useState([]);
+  const [appearance, setAppearance] = useState('forest');
+  const [navigationOrder, setNavigationOrder] = useState(TABS.map(item => item.id));
+  const [hiddenTabs, setHiddenTabs] = useState([]);
   ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
 
   const refreshData = async (database = db) => {
@@ -107,6 +110,9 @@ export default function App() {
         setDb(database); setRemindersEnabled(reminders !== 'false'); setLeadMinutes(lead);
         setSoundEnabled(sound !== 'false'); setVibrationEnabled(vibration !== 'false');
         setAppearance(normalizeAppearance(savedAppearance));
+        const savedNavigationPreferences = normalizeNavigationPreferences(savedNavigation);
+        setNavigationOrder(savedNavigationPreferences.order);
+        setHiddenTabs(savedNavigationPreferences.hidden);
         await refreshData(database);
       } catch (error) { showError(error); }
       finally { if (active) setBusy(false); }
@@ -330,6 +336,31 @@ export default function App() {
 
   const renderTasks = () => <><Heading detail="Assignments, deadlines, and priorities.">Tasks</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a task</Text><Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)}/><Field label="Due date (YYYY-MM-DD, optional)" value={form.dueDate||''} onChangeText={v=>updateForm('dueDate',v)}/><Field label="Priority (Low / Normal / High)" value={form.priority||'Normal'} onChangeText={v=>updateForm('priority',v)}/><Button title="Add task" onPress={addTask}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Your tasks</Text>{data.tasks.map(x=><View key={x.id} style={styles.taskRow}><Pressable onPress={()=>toggleTask(x)} style={[styles.check,x.completed&&styles.checked]}><Text style={styles.checkText}>{x.completed?'✓':''}</Text></Pressable><View style={styles.itemText}><Text style={[styles.itemTitle,x.completed&&styles.done]}>{x.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{x.dueDate?'Due '+x.dueDate:'No due date'} · {x.priority}</Text></View><Pressable onPress={()=>remove('tasks',x.id)}><Trash2 size={17} color={ACTIVE_COLORS.red}/></Pressable></View>)}{!data.tasks.length?<Empty text="No tasks yet."/>:null}</Card></>;
 
+  const saveNavigationPreferences = async (order, hidden) => {
+    const preferences = normalizeNavigationPreferences({ order, hidden });
+    try {
+      await setSetting('navigationPreferences', JSON.stringify(preferences));
+      setNavigationOrder(preferences.order);
+      setHiddenTabs(preferences.hidden);
+    } catch (error) {
+      showError(error);
+    }
+  };
+  const toggleNavigationModule = (id, visible) => {
+    if (id === 'home' || id === 'settings') return;
+    const nextHidden = visible ? hiddenTabs.filter(item => item !== id) : [...new Set([...hiddenTabs, id])];
+    return saveNavigationPreferences(navigationOrder, nextHidden);
+  };
+  const moveNavigationModule = (id, direction) => {
+    const modules = navigationOrder.filter(item => item !== 'home' && item !== 'settings');
+    const from = modules.indexOf(id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= modules.length) return;
+    [modules[from], modules[to]] = [modules[to], modules[from]];
+    return saveNavigationPreferences(['home', ...modules, 'settings'], hiddenTabs);
+  };
+  const resetNavigationPreferences = () => saveNavigationPreferences(TABS.map(item => item.id), []);
+
   const renderSettings = () => <><Heading detail="Personalize your planner and manage local data.">Settings</Heading>
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Appearance</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Choose the CampusOS-style color theme. Your choice is saved on this device and applied throughout the app.</Text>
       {Object.entries(THEMES).map(([id, theme])=><Pressable key={id} onPress={async()=>{setAppearance(id);await setSetting('appearance',id);}} style={[styles.themeOption,{borderColor:appearance===id?theme.forest:theme.line,backgroundColor:theme.cream}]}>
@@ -338,21 +369,43 @@ export default function App() {
         <View style={[styles.themeRadio,{borderColor:theme.forest}]}>{appearance===id?<View style={[styles.themeRadioSelected,{backgroundColor:theme.forest}]}/>:null}</View>
       </Pressable>)}
     </Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Navigation and modules</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Show the modules you use most and arrange their order. Home and Settings remain available.</Text>
-      {navigationOrder.filter(id=>id!=='home'&&id!=='settings').map((id,index)=>{const item=TABS.find(tabItem=>tabItem.id===id);if(!item)return null;return <View key={id} style={styles.modulePreference}><View style={styles.itemText}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{item.label}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{hiddenTabs.includes(id)?'Hidden from navigation':'Visible in navigation'}</Text></View><Switch value={!hiddenTabs.includes(id)} onValueChange={async value=>{const next=value?hiddenTabs.filter(x=>x!==id):[...hiddenTabs,id];setHiddenTabs(next);await setSetting('navigationPreferences',JSON.stringify({order:navigationOrder,hidden:next}));}} trackColor={{true:ACTIVE_COLORS.forest}}/><View style={styles.moduleMove}><Pressable disabled={index===0} onPress={async()=>{const modules=navigationOrder.filter(x=>x!=='home'&&x!=='settings');const from=modules.indexOf(id),to=from-1;if(to<0)return;[modules[from],modules[to]]=[modules[to],modules[from]];const next=['home',...modules,'settings'];setNavigationOrder(next);await setSetting('navigationPreferences',JSON.stringify({order:next,hidden:hiddenTabs}));}}><Text style={[styles.moduleMoveText,index===0&&styles.disabledText]}>↑</Text></Pressable><Pressable disabled={index===navigationOrder.filter(x=>x!=='home'&&x!=='settings').length-1} onPress={async()=>{const modules=navigationOrder.filter(x=>x!=='home'&&x!=='settings');const from=modules.indexOf(id),to=from+1;if(to>=modules.length)return;[modules[from],modules[to]]=[modules[to],modules[from]];const next=['home',...modules,'settings'];setNavigationOrder(next);await setSetting('navigationPreferences',JSON.stringify({order:next,hidden:hiddenTabs}));}}><Text style={[styles.moduleMoveText,index===navigationOrder.filter(x=>x!=='home'&&x!=='settings').length-1&&styles.disabledText]}>↓</Text></Pressable></View></View>})}
+    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Navigation and modules</Text>
+      <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Choose which sections appear in the bottom bar and arrange their order. Home and Settings stay fixed.</Text>
+      {navigationOrder.filter(id=>id!=='home'&&id!=='settings').map((id,index)=>{
+        const item=TABS.find(tabItem=>tabItem.id===id);
+        if(!item)return null;
+        const first=index===0;
+        const last=index===navigationOrder.filter(value=>value!=='home'&&value!=='settings').length-1;
+        return <View key={id} style={styles.modulePreference}>
+          <View style={styles.itemText}>
+            <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{item.label}</Text>
+            <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{hiddenTabs.includes(id)?'Hidden from bottom navigation':'Shown in bottom navigation'}</Text>
+          </View>
+          <Switch accessibilityLabel={`Show ${item.label} in bottom navigation`} value={!hiddenTabs.includes(id)} onValueChange={value=>toggleNavigationModule(id,value)} trackColor={{true:ACTIVE_COLORS.forest}}/>
+          <View style={styles.moduleMove}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Move ${item.label} up`} disabled={first} onPress={()=>moveNavigationModule(id,-1)} style={[styles.moduleMoveButton,first&&styles.moduleMoveDisabled]}>
+              <Text style={[styles.moduleMoveText,{color:ACTIVE_COLORS.forest}]}>↑</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`Move ${item.label} down`} disabled={last} onPress={()=>moveNavigationModule(id,1)} style={[styles.moduleMoveButton,last&&styles.moduleMoveDisabled]}>
+              <Text style={[styles.moduleMoveText,{color:ACTIVE_COLORS.forest}]}>↓</Text>
+            </Pressable>
+          </View>
+        </View>;
+      })}
+      <Button title="Reset navigation order" secondary onPress={resetNavigationPreferences}/>
     </Card>
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Local profile</Text><Field label="Display name" value={form.displayName??data.profile.displayName??''} onChangeText={v=>updateForm('displayName',v)}/><Field label="Program" value={form.program??data.profile.program??''} onChangeText={v=>updateForm('program',v)}/><Field label="Year and section" value={form.yearSection??data.profile.yearSection??''} onChangeText={v=>updateForm('yearSection',v)}/><Button title="Save profile" onPress={saveProfile}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Reminders</Text><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Enable local reminders</Text><Switch value={remindersEnabled} onValueChange={async value=>{setRemindersEnabled(value);await setSetting('remindersEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Field label="Class reminder lead time (minutes)" value={leadMinutes} onChangeText={async value=>{setLeadMinutes(value);await setSetting('leadMinutes',value);}} keyboardType="number-pad"/><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Chime sound</Text><Switch value={soundEnabled} onValueChange={async value=>{setSoundEnabled(value);await setSetting('soundEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Vibration</Text><Switch value={vibrationEnabled} onValueChange={async value=>{setVibrationEnabled(value);await setSetting('vibrationEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Button title="Request notification permission" secondary onPress={async()=>{const result=await Notifications.requestPermissionsAsync();Alert.alert('Notifications',result.granted?'Permission granted.':'Permission not granted.');}}/><Button title="Send test notification" secondary onPress={async()=>{const permission=await Notifications.requestPermissionsAsync();if(!permission.granted){Alert.alert('Permission required','Allow notifications in Android settings first.');return;}await Notifications.scheduleNotificationAsync({content:{title:'Schedule reminder test',body:'Your local notifications are working.',sound:soundEnabled?'schedule_chime.wav':null},trigger:null});Alert.alert('Sent','A local test notification was requested.');}}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Backup and restore</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Export a portable Schedule JSON backup or import a backup from the previous Capacitor app. Import replaces all local records on this device.</Text><Button title="Export local backup" onPress={exportBackup}/><Button title="Import JSON backup" secondary onPress={importBackup}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Storage</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Native SQLite database: schedule-local.db. No login, backend, or cloud sync is used.</Text><Button title="Refresh local data" secondary onPress={changed}/></Card></>;
 
   const screen = {home:renderHome,schedule:renderSchedule,budget:renderBudget,notes:renderNotes,tasks:renderTasks,settings:renderSettings}[tab];
   if (busy) return <SafeAreaView style={styles.loading}><StatusBar barStyle="dark-content" backgroundColor={ACTIVE_COLORS.cream}/><GraduationCap size={34} color={ACTIVE_COLORS.forest}/><Text style={styles.loadingText}>Preparing your local planner…</Text></SafeAreaView>;
 
-  return <SafeAreaView style={[styles.safe,{backgroundColor:ACTIVE_ACTIVE_COLORS.cream}]}>
-    <StatusBar barStyle="dark-content" backgroundColor={ACTIVE_ACTIVE_COLORS.cream}/>
-    <View style={[styles.topbar,{backgroundColor:ACTIVE_ACTIVE_COLORS.cream}]}><View style={styles.brand}><View style={[styles.logo,{backgroundColor:ACTIVE_ACTIVE_COLORS.forest}]}><GraduationCap size={23} color="#fff"/></View><View><Text style={[styles.brandEyebrow,{color:ACTIVE_ACTIVE_COLORS.forest2}]}>STUDENT PLANNER</Text><Text style={[styles.brandName,{color:ACTIVE_ACTIVE_COLORS.ink}]}>Schedule</Text></View></View><Pressable onPress={()=>setTab('settings')} style={[styles.settingsIcon,{backgroundColor:ACTIVE_ACTIVE_COLORS.white}]}><Settings color={ACTIVE_ACTIVE_COLORS.forest} size={21}/></Pressable></View>
+  return <SafeAreaView style={[styles.safe,{backgroundColor:ACTIVE_COLORS.cream}]}>
+    <StatusBar barStyle="dark-content" backgroundColor={ACTIVE_COLORS.cream}/>
+    <View style={[styles.topbar,{backgroundColor:ACTIVE_COLORS.cream}]}><View style={styles.brand}><View style={[styles.logo,{backgroundColor:ACTIVE_COLORS.forest}]}><GraduationCap size={23} color="#fff"/></View><View><Text style={[styles.brandEyebrow,{color:ACTIVE_COLORS.forest2}]}>STUDENT PLANNER</Text><Text style={[styles.brandName,{color:ACTIVE_COLORS.ink}]}>Schedule</Text></View></View><Pressable onPress={()=>setTab('settings')} style={[styles.settingsIcon,{backgroundColor:ACTIVE_COLORS.white}]}><Settings color={ACTIVE_COLORS.forest} size={21}/></Pressable></View>
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS==='ios'?'padding':undefined}>
       <ScrollView key={tab} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{screen()}</ScrollView>
     </KeyboardAvoidingView>
-    <View style={[styles.nav,{backgroundColor:ACTIVE_ACTIVE_COLORS.white,borderTopColor:ACTIVE_ACTIVE_COLORS.line}]}>{navigationOrder.filter(id=>id==='home'||id==='settings'||!hiddenTabs.includes(id)).map(id=>TABS.find(item=>item.id===id)).filter(Boolean).map(({id,label,Icon})=><Pressable key={id} onPress={()=>{setTab(id);resetForm();}} style={[styles.navItem,tab===id&&styles.navActive,tab===id&&{backgroundColor:ACTIVE_ACTIVE_COLORS.soft}]}><Icon size={19} color={tab===id?ACTIVE_ACTIVE_COLORS.forest:'#89948c'}/><Text style={[styles.navLabel,tab===id&&styles.navLabelActive,tab===id&&{color:ACTIVE_ACTIVE_COLORS.forest}]}>{label}</Text></Pressable>)}</View>
+    <View style={[styles.nav,{backgroundColor:ACTIVE_COLORS.white,borderTopColor:ACTIVE_COLORS.line}]}>{navigationOrder.filter(id=>id==='home'||id==='settings'||!hiddenTabs.includes(id)).map(id=>TABS.find(item=>item.id===id)).filter(Boolean).map(({id,label,Icon})=><Pressable key={id} onPress={()=>{setTab(id);resetForm();}} style={[styles.navItem,tab===id&&styles.navActive,tab===id&&{backgroundColor:ACTIVE_COLORS.soft}]}><Icon size={19} color={tab===id?ACTIVE_COLORS.forest:'#89948c'}/><Text style={[styles.navLabel,tab===id&&styles.navLabelActive,tab===id&&{color:ACTIVE_COLORS.forest}]}>{label}</Text></Pressable>)}</View>
   </SafeAreaView>;
 }
 
@@ -362,6 +415,7 @@ const styles=StyleSheet.create({
   content:{paddingHorizontal:16,paddingBottom:30,gap:14},heading:{marginTop:7,marginBottom:2},h1:{fontSize:26,fontWeight:'800',color:COLORS.ink},sub:{fontSize:12,color:COLORS.muted,marginTop:4},profileLine:{color:COLORS.muted,fontSize:12,marginTop:-8},
   card:{backgroundColor:COLORS.white,borderRadius:20,padding:16,borderWidth:1,borderColor:COLORS.line,gap:10},cardTitle:{fontSize:16,fontWeight:'800',color:COLORS.ink,marginBottom:3},stats:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{width:'48%',flexGrow:1,minHeight:90,justifyContent:'center'},statValue:{fontSize:21,fontWeight:'800',color:COLORS.forest,marginTop:8},balance:{fontSize:28,fontWeight:'900',color:COLORS.forest},label:{fontSize:10,fontWeight:'700',letterSpacing:.6,color:COLORS.muted},
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
-  modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:12,paddingHorizontal:4},moduleMoveText:{fontSize:20,fontWeight:'800',color:COLORS.forest,paddingHorizontal:3},disabledText:{opacity:0.25},\n  themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
+  modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
+  themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
   item:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed',gap:9},itemText:{flex:1},itemTitle:{fontSize:14,fontWeight:'700',color:COLORS.ink},itemDetail:{fontSize:11,color:COLORS.muted,marginTop:3},trailing:{fontSize:12,fontWeight:'800',color:COLORS.forest},delete:{padding:5},empty:{fontSize:12,color:COLORS.muted,paddingVertical:12},taskRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed'},check:{width:23,height:23,borderWidth:1.5,borderColor:'#b8c7bd',borderRadius:7,alignItems:'center',justifyContent:'center'},checked:{backgroundColor:COLORS.forest,borderColor:COLORS.forest},checkText:{color:'#fff',fontWeight:'900'},done:{textDecorationLine:'line-through',color:'#9aa39b'},switchRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:7},nav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:7,paddingBottom:Platform.OS==='android'?7:3,paddingHorizontal:2},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3,paddingVertical:4,borderRadius:10},navActive:{backgroundColor:'#edf4ef'},navLabel:{fontSize:9,color:'#89948c',fontWeight:'600'},navLabelActive:{color:COLORS.forest,fontWeight:'900'}
 });

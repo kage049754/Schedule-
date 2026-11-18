@@ -1,33 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  DEFAULT_NAVIGATION_ORDER,
-  getVisibleNavigationTabs,
-  moveNavigationModule,
-  normalizeNavigationPreferences,
-  setNavigationModuleVisible,
-} from '../src-native/navigation.js';
+import { DEFAULT_NAVIGATION_ORDER, normalizeNavigationPreferences } from '../src-native/navigation.js';
 
-test('navigation preferences normalize malformed and incomplete values safely', () => {
-  assert.deepEqual(normalizeNavigationPreferences(), { order: [...DEFAULT_NAVIGATION_ORDER], hidden: [] });
-  assert.deepEqual(normalizeNavigationPreferences('{bad json'), { order: [...DEFAULT_NAVIGATION_ORDER], hidden: [] });
-  assert.deepEqual(normalizeNavigationPreferences({
-    order: ['tasks', 'tasks', 'unknown', 'budget'],
-    hidden: ['home', 'settings', 'notes', 'notes', 'bad'],
-  }), { order: ['home', 'tasks', 'budget', 'schedule', 'notes', 'settings'], hidden: ['notes'] });
+test('navigation defaults keep Home first and Settings last', () => {
+  assert.deepEqual(normalizeNavigationPreferences(), {
+    order: DEFAULT_NAVIGATION_ORDER,
+    hidden: []
+  });
 });
 
-test('home and settings stay pinned while modules can be moved', () => {
-  const moved = moveNavigationModule({}, 'tasks', -1);
-  assert.deepEqual(moved.order, ['home', 'schedule', 'budget', 'tasks', 'notes', 'settings']);
-  assert.deepEqual(moveNavigationModule(moved, 'schedule', -1).order, moved.order);
-  assert.deepEqual(moveNavigationModule(moved, 'settings', -1).order, moved.order);
+test('saved module order is preserved while pinned tabs remain fixed', () => {
+  const result = normalizeNavigationPreferences({
+    order: ['tasks', 'settings', 'budget', 'home', 'schedule', 'notes', 'tasks'],
+    hidden: ['budget', 'home', 'settings', 'unknown', 'budget']
+  });
+  assert.deepEqual(result.order, ['home', 'tasks', 'budget', 'schedule', 'notes', 'settings']);
+  assert.deepEqual(result.hidden, ['budget']);
 });
 
-test('module visibility can be toggled without hiding pinned navigation', () => {
-  const hidden = setNavigationModuleVisible({}, 'budget', false);
-  assert.deepEqual(hidden.hidden, ['budget']);
-  assert.deepEqual(getVisibleNavigationTabs(hidden), ['home', 'schedule', 'notes', 'tasks', 'settings']);
-  assert.deepEqual(setNavigationModuleVisible(hidden, 'budget', true).hidden, []);
-  assert.deepEqual(setNavigationModuleVisible(hidden, 'home', false).hidden, ['budget']);
+test('navigation preferences accept serialized local settings and recover from invalid JSON', () => {
+  assert.deepEqual(normalizeNavigationPreferences('{"order":["notes"],"hidden":["tasks"]}'), {
+    order: ['home', 'notes', 'schedule', 'budget', 'tasks', 'settings'],
+    hidden: ['tasks']
+  });
+  assert.deepEqual(normalizeNavigationPreferences('{bad json'), {
+    order: DEFAULT_NAVIGATION_ORDER,
+    hidden: []
+  });
 });

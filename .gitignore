@@ -13,3 +13,6 @@ android/app/build
 .expo/
 expo-env.d.ts
 /android/
+
+# Expo JavaScript bundle verification output
+/dist-native/
