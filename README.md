@@ -20,8 +20,8 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Initial shell complete; polish pending |
 | 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Implemented; allowance balance uses active date range |
 | 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Timetable, subject/class editing, personal activities, and overlap prevention implemented |
-| 4 | Notifications and reminders | Local notifications for classes, personal activities, and task deadlines; configurable lead time and per-feature toggles | Implemented; Android permission/vibration settings and Snooze 10 min/Dismiss actions added; custom sound and reboot QA remain |
-| 4A | Alarm and vibration | Alarm-style class/deadline alerts, vibration, snooze/dismiss, and exact-alarm permission handling | Notification channels, vibration controls, Snooze 10 min, and Dismiss implemented; custom sound and reboot recovery remain |
+| 4 | Notifications and reminders | Local notifications for classes, personal activities, and task deadlines; configurable lead time and per-feature toggles | Implemented; bundled chime, sound/vibration controls, Android boot-restore receiver, and Snooze 10 min/Dismiss actions added; device delivery QA remains |
+| 4A | Alarm and vibration | Alarm-style class/deadline alerts, vibration, snooze/dismiss, and exact-alarm permission handling | Notification channels, bundled Schedule chime, independent sound/vibration controls, boot restoration, Snooze 10 min, and Dismiss implemented; device QA remains |
 | 4B | Home-screen widget | Native Android home-screen widget showing next class, countdown, room, and nearest deadline; local snapshot bridge and periodic refresh | Implemented in CI APK; device placement/refresh QA pending |
 | 5 | Budget | Daily/weekly/monthly allowance, income, expenses, live balance | Implemented; date-scoped allowance, transaction ledger, and today/week/month/all-time reports |
 | 6 | Spending limits | Category budgets and spent/remaining indicators | Implemented; daily/weekly/monthly limits and over-limit indicators |
@@ -34,7 +34,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 13 | QA | Offline, persistence, calculation, conflict, date and accessibility checks | Planned |
 | 14 | Android packaging | Capacitor Android project, identity, permissions, icons | CI-generated debug APK builds and artifact verification passed |
 | 15 | Release | CI build, APK generation, artifact integrity and device install verification | Latest debug APK built and extracted in Run #190; physical install and widget placement remain |
-| 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, vibration, Do Not Disturb behavior, reboot rescheduling, battery restrictions, and widget refresh on supported Android versions | Planned |
+| 16 | Notification/widget QA | Test notification permission flows, exact-alarm access where required, chime, vibration, Do Not Disturb behavior, reboot restoration, battery restrictions, and widget refresh on supported Android versions | Device testing pending |
 
 ### Detailed expected behavior
 
