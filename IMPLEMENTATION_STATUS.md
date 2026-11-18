@@ -7,7 +7,14 @@
 **New architecture:** React Native 0.88 + Expo SDK 58 + Expo SQLite + Expo Notifications.  
 **Backend:** None; fully offline core.
 
-### React Native work started
+#### CampusOS visual system and Settings parity
+- [x] Added persistent Forest, Sunset, and Monochrome appearance themes to the React Native Settings screen.
+- [x] Applied the selected theme to the native app shell, cards, form fields, buttons, headings, and navigation surfaces.
+- [x] Added local module visibility and ordering preferences; Home and Settings remain pinned and cannot be hidden or moved.
+- [x] Kept profile, local reminder sound/vibration/lead-time controls, JSON backup import/export, and local-storage privacy information inside the native Settings module.
+- [ ] Verify theme persistence after app restart and visual consistency on Android device/emulator; CI compilation is not a substitute for visual QA.
+
+## React Native work started
 - [x] Created an isolated migration branch from the latest verified main commit.
 - [x] Replaced the branch package scripts/dependencies with Expo + React Native runtime packages; removed Capacitor, Vite, Tailwind, React DOM, and Dexie from the native runtime dependency list.
 - [x] Added Expo app configuration, Android package identity, and native entry point.
