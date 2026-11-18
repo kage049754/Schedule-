@@ -43,7 +43,7 @@ jobs:
           npx expo install --fix
           npx expo-doctor
       - name: Run native domain tests
-        run: node --test tests/native-domain.test.js
+        run: node --test tests/*.test.js
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
       - name: Build debug APK

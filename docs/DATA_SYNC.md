@@ -7,10 +7,10 @@ The React Native shell currently refreshes its shared screen data after successf
 ## Update flow
 
 1. A user creates, edits, completes, or deletes a record in its owning module.
-2. The module writes the change to its Dexie table. Related multi-table changes use a Dexie transaction.
-3. Any screen whose `liveQuery` reads that table receives a fresh result and rerenders. No manual refresh is required.
-4. Derived totals and lists are recalculated from the latest records; screens do not keep separate copies of financial or planner truth.
-5. The app-level reminder observer watches schedule slots, personal activities, subjects, and tasks. When one changes, it asks Android's local notification scheduler to cancel and rebuild the managed reminders.
+2. On `main`, the module writes to its Dexie table; on the React Native migration branch, it writes to SQLite.
+3. The Capacitor version uses Dexie `liveQuery`. The current React Native shell reloads shared screen data after successful writes and when tabs are opened; full dependency-wide live refresh is not yet ported.
+4. Derived totals are recalculated from the records loaded from the local database; no separate server copy exists.
+5. The React Native reminder scheduler rebuilds managed local notifications after watched data or reminder settings change while the app is active.
 
 ## Cross-module dependency map
 

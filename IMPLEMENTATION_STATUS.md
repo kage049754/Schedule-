@@ -16,9 +16,13 @@
 - [x] Added native domain helpers and tests for centavo precision, time validation, overlap prevention, allowance ranges, and balance calculation.
 - [x] Added reproducible bundled reminder chime generation and Expo Notifications configuration.
 - [x] Replaced the Capacitor GitHub Actions workflow with an Expo Prebuild + Gradle Android APK workflow on the migration branch.
-- [ ] Verify Expo dependency compatibility, unit tests, native Gradle build, notification sound/boot permission, and APK artifact in CI.
-- [ ] Port complete feature parity: full weekly timetable editor/activities, savings and category limits, note editing/archive/pin/search, task checklists/priority views, navigation customization, backup export/import, widget, snooze/dismiss actions.
-- [ ] Implement import of existing `schedule-local-backup` JSON into SQLite before replacing the stable branch.
+- [x] Implemented version-1 legacy JSON backup format validation and normalization, including required-field checks, duplicate-ID rejection, unknown-column filtering, legacy activity date normalization, and preservation of record/relationship IDs.
+- [x] Implemented transaction-protected SQLite backup restore and native JSON export. Invalid backups are rejected before writes; failed inserts roll back rather than partially restoring.
+- [x] Added Settings controls to export/share JSON and import via Android document picker with destructive replacement confirmation.
+- [x] Added SQLite `activities.date` migration so legacy calendar dates are retained alongside weekday values.
+- [ ] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the artifact.
+- [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
+- [ ] Port remaining parity: personal activity CRUD/editor, savings and category limits, note edit/search/pin/archive, task checklists, settings/navigation customization, and native widget.
 - [ ] Device QA on Android; physical behavior is not yet verified.
 
 ## Previous Capacitor baseline (preserved on main)
@@ -59,6 +63,10 @@
 - [x] Extracted pure overlap and slot-merging rules into src/services/scheduleRules.js.
 - [x] Added Node tests for adjacency, overlap, inactive entries, and merging.
 - [x] Added npm test to GitHub Actions before production build.
+
+### React Native backup migration implementation (CI verification pending)
+
+The migration branch now contains the portable backup service (`src-native/backup.js`), SQLite transaction adapter (`src-native/backupStorage.js`), Settings UI controls, Expo Document Picker/FileSystem/Sharing dependencies, and `tests/native-backup.test.js`. The GitHub workflow is being expanded to run all `tests/*.test.js`, including legacy backup tests. The current implementation has not yet passed a completed CI run or a physical-device round-trip; do not treat the migration as production-safe until both are verified.
 
 ### Current verification
 - [x] [Run #27](https://github.com/kage049754/Schedule-/actions/runs/44149678881) completed successfully.

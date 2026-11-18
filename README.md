@@ -96,7 +96,7 @@ On `main`, the original web app uses Dexie live queries. On `react-native-migrat
 
 ## React Native migration status
 
-The first native shell now has Dashboard, Schedule, Budget, Notes, Tasks, and Settings tabs, with initial SQLite-backed class, expense/income, note, task, and local-profile flows. Weekly schedule display, allowance recording, notification scheduling, and finance calculations are being ported. Savings, category limits, checklists, complete timetable editing, backup import/export, native widget, and migration of existing user data are not yet fully ported. Do not uninstall the existing APK or clear its app data until a backup-import path is verified.
+The first native shell has Dashboard, Schedule, Budget, Notes, Tasks, and Settings tabs, with SQLite-backed core flows. Legacy `schedule-local-backup` version-1 JSON export/import is implemented on the migration branch: imports validate and normalize records, preserve IDs/relationships, and restore transactionally into SQLite; Settings exposes export/share and destructive-confirmed import. CI validation and an actual device round-trip are still pending. Savings, category limits, full task checklists, complete timetable/activity editing, navigation customization, and the native widget remain parity work. Do not uninstall the existing APK or clear its app data until a real backup round-trip succeeds on the target device.
 
 The React Native CI workflow builds a debug APK with `expo prebuild` and Gradle. See IMPLEMENTATION_STATUS.md for the current build evidence.
 
