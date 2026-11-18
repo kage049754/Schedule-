@@ -219,3 +219,12 @@ export function findNearestNativeTask(tasks = []) {
     .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate))
       || String(a.title || '').localeCompare(String(b.title || '')))[0] || null;
 }
+
+
+export function buildDashboardTimeline(classes = [], activities = []) {
+  return [
+    ...classes.map(entry => ({ ...entry, timelineType: 'class' })),
+    ...activities.map(entry => ({ ...entry, timelineType: 'activity' })),
+  ].sort((a, b) => Number(a.startMinutes) - Number(b.startMinutes)
+    || Number(a.endMinutes) - Number(b.endMinutes));
+}

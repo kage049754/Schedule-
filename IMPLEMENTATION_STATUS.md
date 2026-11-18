@@ -163,7 +163,7 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Kept Forest as the default palette and retained a one-tap reset to Forest.
 
 ### CampusOS-inspired full UI and Dashboard redesign
-- [x] Rebuilt Dashboard around a forest-green greeting/next-class hero, four live overview tiles, quick actions, class timeline, task progress/deadline alerts, budget snapshot, recent expenses, and savings-goal progress.
+- [x] Rebuilt Dashboard around a forest-green greeting/next-class hero, four live overview tiles, quick actions, a time-sorted timeline combining today's classes and personal activities, task progress/deadline alerts, budget snapshot, recent expenses, and savings-goal progress.
 - [x] Added direct navigation from dashboard cards and quick actions to the relevant modules.
 - [x] Applied a consistent compact card system, spacing, rounded surfaces, icon treatments, section headings, and timeline layout using the selected appearance palette.
 - [ ] Verify responsive layout, dynamic data updates, and visual consistency across all six palettes on a physical Android device.
@@ -172,3 +172,9 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Refined app header, page spacing, reusable cards, field controls, buttons, list rows, and bottom navigation.
 - [x] Kept component surfaces neutral and tied to the active appearance palette for consistent presentation across modules.
 - [ ] Verify touch targets and visual scaling on the target Android device.
+
+
+### Dashboard timeline data coverage
+- [x] Combined today's SQLite-backed classes and personal activities into one chronological home timeline.
+- [x] Added a native-domain test for event ordering and non-mutating timeline construction.
+- [ ] Verify activity/class updates and visual timeline spacing on the target Android device.

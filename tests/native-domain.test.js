@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask } from '../src-native/domain.js';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask, buildDashboardTimeline } from '../src-native/domain.js';
 
 test('money is stored as integer centavos', () => {
   assert.equal(parseMoneyToCentavos('205'), 20500);
@@ -171,4 +171,25 @@ test('native widget selects the nearest unfinished deadline', () => {
   ]);
   assert.equal(task.id, 3);
   assert.equal(findNearestNativeTask([{ title: 'Done', dueDate: '2026-11-18', completed: 1 }]), null);
+});
+
+
+test('dashboard timeline combines classes and personal activities in chronological order', () => {
+  const classes = [
+    { id: 'class-1', code: 'ITEC 80', startMinutes: 480, endMinutes: 540 },
+  ];
+  const activities = [
+    { id: 'activity-1', title: 'Morning walk', startMinutes: 420, endMinutes: 450 },
+    { id: 'activity-2', title: 'Study group', startMinutes: 480, endMinutes: 600 },
+  ];
+
+  const timeline = buildDashboardTimeline(classes, activities);
+
+  assert.deepEqual(timeline.map(item => [item.id, item.timelineType]), [
+    ['activity-1', 'activity'],
+    ['class-1', 'class'],
+    ['activity-2', 'activity'],
+  ]);
+  assert.equal(classes[0].timelineType, undefined, 'the source class record is not mutated');
+  assert.equal(activities[0].timelineType, undefined, 'the source activity record is not mutated');
 });

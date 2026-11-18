@@ -20,7 +20,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 |---|---|---|---|
 | 0 | Foundation | Expo + React Native + SQLite Android setup | In progress on `react-native-migration`
 | 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Initial shell complete; polish pending |
-| 2 | Dashboard | CampusOS-inspired greeting hero, next class, live overview tiles, quick actions, class timeline, task progress, budget and savings snapshots | Redesigned on migration branch; physical visual QA pending |
+| 2 | Dashboard | CampusOS-inspired greeting hero, next class/time, live overview tiles, quick actions, time-sorted class and personal-activity timeline, task progress, budget and savings snapshots | Redesigned on migration branch; physical visual QA pending |
 | 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Timetable, subject/class editing, personal activities, and overlap prevention implemented |
 | 4 | Notifications and reminders | Local notifications for classes, personal activities, and task deadlines; configurable lead time and per-feature toggles | Implemented; bundled chime, sound/vibration controls, Android boot-restore receiver, and Snooze 10 min/Dismiss actions added; device delivery QA remains |
 | 4A | Alarm and vibration | Alarm-style class/deadline alerts, vibration, snooze/dismiss, and exact-alarm permission handling | Notification channels, bundled Schedule chime, independent sound/vibration controls, boot restoration, Snooze 10 min, and Dismiss implemented; device QA remains |

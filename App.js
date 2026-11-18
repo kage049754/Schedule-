@@ -22,7 +22,7 @@ import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { normalizeNavigationPreferences } from './src-native/navigation';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask, buildDashboardTimeline } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 const ThemeContext = React.createContext(COLORS);
@@ -534,6 +534,7 @@ export default function App() {
     const now = new Date();
     const today = todayKey();
     const nextClass = findNextNativeClass(data.allClasses, now);
+    const todayTimeline = buildDashboardTimeline(data.classes, data.activities);
     const pendingTasks = data.tasks.filter(task => !task.completed);
     const overdueTasks = pendingTasks.filter(task => task.dueDate && task.dueDate < today);
     const dueToday = pendingTasks.filter(task => task.dueDate === today);
@@ -542,7 +543,8 @@ export default function App() {
     const taskProgress = data.tasks.length ? Math.round(completedTasks / data.tasks.length * 100) : 0;
     const saved = savingsTotal;
     const nextClassTitle = nextClass?.title || 'No upcoming class';
-    const nextClassDetails = nextClass?.details || 'Your timetable is clear for now';
+    const nextClassTime = nextClass?.startAt?.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
+    const nextClassDetails = [nextClassTime, nextClass?.details].filter(Boolean).join(' · ') || 'Your timetable is clear for now';
     const quickActions = [
       { label: 'Add class', icon: 'calendar-plus', tab: 'schedule' },
       { label: 'Add expense', icon: 'cash-plus', tab: 'budget' },
@@ -560,7 +562,7 @@ export default function App() {
         <View style={styles.heroDivider}/>
         <View style={styles.heroNextRow}>
           <View style={styles.heroNextIcon}><MaterialCommunityIcons name="clock-time-four-outline" size={22} color={ACTIVE_COLORS.forest}/></View>
-          <View style={styles.heroNextText}><Text style={styles.heroEyebrow}>UP NEXT</Text><Text style={styles.heroClassTitle}>{nextClassTitle}</Text><Text style={styles.heroClassDetail}>{nextClassDetails}</Text></View>
+          <View style={styles.heroNextText}><Text style={styles.heroEyebrow}>NEXT CLASS</Text><Text style={styles.heroClassTitle}>{nextClassTitle}</Text><Text style={styles.heroClassDetail}>{nextClassDetails}</Text></View>
         </View>
       </View>
 
@@ -602,15 +604,15 @@ export default function App() {
 
       <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Today's schedule</Text><Pressable onPress={()=>setTab('schedule')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View timetable</Text></Pressable></View>
       <Card>
-        {data.classes.length ? data.classes.map((item,index)=><View key={item.id} style={styles.classTimelineRow}>
+        {todayTimeline.length ? todayTimeline.map((item,index)=><View key={item.id} style={styles.classTimelineRow}>
           <View style={styles.classTimelineTime}><Text style={[styles.classTimeText,{color:ACTIVE_COLORS.forest}]}>{timeLabel(item.startMinutes)}</Text><Text style={[styles.classTimeEnd,{color:ACTIVE_COLORS.muted}]}>{timeLabel(item.endMinutes)}</Text></View>
           <View style={[styles.classTimelineLine,{backgroundColor:ACTIVE_COLORS.line}]}><View style={[styles.classTimelineDot,{backgroundColor:ACTIVE_COLORS.forest}]}/></View>
           <View style={[styles.classTimelineCard,{backgroundColor:ACTIVE_COLORS.cream,borderColor:ACTIVE_COLORS.line}]}>
-            <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{item.code||item.subjectName||'Class'}</Text>
-            <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{item.subjectName||'Subject'} · {item.kind||'Class'}</Text>
-            <View style={styles.classRoomLine}><MaterialCommunityIcons name="map-marker-outline" size={13} color={ACTIVE_COLORS.muted}/><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted,marginTop:0}]}>{item.room||'Room not set'}</Text></View>
+            <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{item.timelineType==='activity'?item.title:(item.code||item.subjectName||'Class')}</Text>
+            <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{item.timelineType==='activity'?'Personal activity':(item.subjectName||'Subject')+' · '+(item.kind||'Class')}</Text>
+            <View style={styles.classRoomLine}><MaterialCommunityIcons name="map-marker-outline" size={13} color={ACTIVE_COLORS.muted}/><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted,marginTop:0}]}>{item.timelineType==='activity'?(item.location||'Location not set'):(item.room||'Room not set')}</Text></View>
           </View>
-        </View>) : <View style={styles.dashboardEmpty}><MaterialCommunityIcons name="calendar-blank-outline" size={25} color={ACTIVE_COLORS.muted}/><Text style={[styles.dashboardEmptyTitle,{color:ACTIVE_COLORS.ink}]}>No classes scheduled today</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Your timetable is clear. Enjoy the free time or plan ahead.</Text></View>}
+        </View>) : <View style={styles.dashboardEmpty}><MaterialCommunityIcons name="calendar-blank-outline" size={25} color={ACTIVE_COLORS.muted}/><Text style={[styles.dashboardEmptyTitle,{color:ACTIVE_COLORS.ink}]}>Nothing scheduled today</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Add a class or personal activity to see it here.</Text></View>}
       </Card>
 
       <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Tasks and deadlines</Text><Pressable onPress={()=>setTab('tasks')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View tasks</Text></Pressable></View>
