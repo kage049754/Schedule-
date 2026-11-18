@@ -161,3 +161,9 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Added five-color swatch previews and a clearly marked selected palette in Settings; changing a palette updates the app immediately and persists locally.
 - [x] Replaced module-level mutable active-theme state with React context so reusable UI components read the selected palette through React's render tree.
 - [x] Kept Forest as the default palette and retained a one-tap reset to Forest.
+
+### CampusOS-inspired full UI and Dashboard redesign
+- [x] Rebuilt Dashboard around a forest-green greeting/next-class hero, four live overview tiles, quick actions, class timeline, task progress/deadline alerts, budget snapshot, recent expenses, and savings-goal progress.
+- [x] Added direct navigation from dashboard cards and quick actions to the relevant modules.
+- [x] Applied a consistent compact card system, spacing, rounded surfaces, icon treatments, section headings, and timeline layout using the selected appearance palette.
+- [ ] Verify responsive layout, dynamic data updates, and visual consistency across all six palettes on a physical Android device.

@@ -530,13 +530,122 @@ export default function App() {
   const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{if(table==='savingsGoals'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM savingsEntries WHERE goalId=?',id);await db.runAsync('DELETE FROM savingsGoals WHERE id=?',id);});}else if(table==='tasks'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM taskChecklist WHERE taskId=?',id);await db.runAsync('DELETE FROM tasks WHERE id=?',id);});}else{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);}changed();}catch(e){showError(e);}}}]);
   const toggleTask = async (task) => { try { await db.runAsync('UPDATE tasks SET completed=?,updatedAt=? WHERE id=?',task.completed?0:1,new Date().toISOString(),task.id); changed(); } catch (error) { showError(error); } };
 
-  const renderHome = () => <><Heading detail={DAYS[new Date().getDay()]+' · '+todayKey()}>{data.profile.displayName ? 'Welcome back, '+data.profile.displayName : 'Your day, organized.'}</Heading>
-    {(data.profile.program||data.profile.yearSection)?<Text style={[styles.profileLine,{color:ACTIVE_COLORS.muted}]}>{[data.profile.program,data.profile.yearSection].filter(Boolean).join(' · ')}</Text>:null}
-    <View style={styles.stats}><Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>TODAY'S CLASSES</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{data.classes.length}</Text></Card><Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>PENDING TASKS</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{data.tasks.filter(x=>!x.completed).length}</Text></Card><Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>MONEY AVAILABLE</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(availableBalance)}</Text></Card><Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>SAVINGS GOALS</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{data.goals.length}</Text></Card></View>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Today's classes</Text>{data.classes.length?data.classes.map(x=><Item key={x.id} title={x.code||x.subjectName||'Class'} detail={(x.room||'Room not set')+' · '+x.kind+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)}/>):<Empty text="No classes scheduled for today."/>}</Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Recent expenses</Text>{data.expenses.slice(0,4).map(x=><Item key={x.id} title={x.description} detail={x.date} trailing={'−'+peso(x.amount)}/>)}{!data.expenses.length?<Empty text="Your expenses will appear here."/>:null}</Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Tasks to finish</Text>{data.tasks.filter(x=>!x.completed).slice(0,4).map(x=><Item key={x.id} title={x.title} detail={x.dueDate?'Due '+x.dueDate:'No due date'}/>)}{!data.tasks.some(x=>!x.completed)?<Empty text="No pending tasks."/>:null}</Card>
-  </>;
+  const renderHome = () => {
+    const now = new Date();
+    const today = todayKey();
+    const nextClass = findNextNativeClass(data.allClasses, now);
+    const pendingTasks = data.tasks.filter(task => !task.completed);
+    const overdueTasks = pendingTasks.filter(task => task.dueDate && task.dueDate < today);
+    const dueToday = pendingTasks.filter(task => task.dueDate === today);
+    const upcomingTasks = pendingTasks.filter(task => task.dueDate && task.dueDate >= today).slice(0, 3);
+    const completedTasks = data.tasks.filter(task => task.completed).length;
+    const taskProgress = data.tasks.length ? Math.round(completedTasks / data.tasks.length * 100) : 0;
+    const saved = savingsTotal;
+    const nextClassTitle = nextClass?.title || 'No upcoming class';
+    const nextClassDetails = nextClass?.details || 'Your timetable is clear for now';
+    const quickActions = [
+      { label: 'Add class', icon: 'calendar-plus', tab: 'schedule' },
+      { label: 'Add expense', icon: 'cash-plus', tab: 'budget' },
+      { label: 'New note', icon: 'note-plus-outline', tab: 'notes' },
+      { label: 'Add task', icon: 'checkbox-marked-circle-plus-outline', tab: 'tasks' }
+    ];
+    return <>
+      <View style={[styles.dashboardHero,{backgroundColor:ACTIVE_COLORS.forest}]}>
+        <View style={styles.heroTopLine}>
+          <View style={styles.heroDatePill}><MaterialCommunityIcons name="calendar-blank-outline" size={13} color="#fff"/><Text style={styles.heroDateText}>{now.toLocaleDateString('en-PH',{weekday:'long',month:'long',day:'numeric'})}</Text></View>
+          <MaterialCommunityIcons name="school-outline" size={30} color="#ffffff" style={{opacity:0.9}}/>
+        </View>
+        <Text style={styles.heroGreeting}>{data.profile.displayName ? 'Hello, '+data.profile.displayName+'!' : 'Hello, student!'}</Text>
+        <Text style={styles.heroSubtitle}>{[data.profile.program,data.profile.yearSection].filter(Boolean).join(' · ') || 'Your campus day at a glance'}</Text>
+        <View style={styles.heroDivider}/>
+        <View style={styles.heroNextRow}>
+          <View style={styles.heroNextIcon}><MaterialCommunityIcons name="clock-time-four-outline" size={22} color={ACTIVE_COLORS.forest}/></View>
+          <View style={styles.heroNextText}><Text style={styles.heroEyebrow}>UP NEXT</Text><Text style={styles.heroClassTitle}>{nextClassTitle}</Text><Text style={styles.heroClassDetail}>{nextClassDetails}</Text></View>
+        </View>
+      </View>
+
+      <View style={styles.dashboardSectionHeading}>
+        <Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Your overview</Text>
+        <Text style={[styles.dashboardSectionHint,{color:ACTIVE_COLORS.muted}]}>Updated from your local records</Text>
+      </View>
+      <View style={styles.dashboardStats}>
+        <Pressable onPress={()=>setTab('schedule')} style={[styles.dashboardStat,{backgroundColor:ACTIVE_COLORS.white,borderColor:ACTIVE_COLORS.line}]}>
+          <View style={[styles.dashboardStatIcon,{backgroundColor:ACTIVE_COLORS.soft}]}><MaterialCommunityIcons name="calendar-check-outline" size={19} color={ACTIVE_COLORS.forest}/></View>
+          <Text style={[styles.dashboardStatValue,{color:ACTIVE_COLORS.ink}]}>{data.classes.length}</Text>
+          <Text style={[styles.dashboardStatLabel,{color:ACTIVE_COLORS.muted}]}>Classes today</Text>
+        </Pressable>
+        <Pressable onPress={()=>setTab('tasks')} style={[styles.dashboardStat,{backgroundColor:ACTIVE_COLORS.white,borderColor:ACTIVE_COLORS.line}]}>
+          <View style={[styles.dashboardStatIcon,{backgroundColor:'#fff1e6'}]}><MaterialCommunityIcons name="checkbox-marked-circle-outline" size={19} color="#b66b35"/></View>
+          <Text style={[styles.dashboardStatValue,{color:ACTIVE_COLORS.ink}]}>{pendingTasks.length}</Text>
+          <Text style={[styles.dashboardStatLabel,{color:ACTIVE_COLORS.muted}]}>Tasks left</Text>
+        </Pressable>
+        <Pressable onPress={()=>setTab('budget')} style={[styles.dashboardStat,{backgroundColor:ACTIVE_COLORS.white,borderColor:ACTIVE_COLORS.line}]}>
+          <View style={[styles.dashboardStatIcon,{backgroundColor:'#e8f1fa'}]}><MaterialCommunityIcons name="wallet-outline" size={19} color="#477aa6"/></View>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.dashboardStatValue,{color:ACTIVE_COLORS.ink}]}>{peso(availableBalance)}</Text>
+          <Text style={[styles.dashboardStatLabel,{color:ACTIVE_COLORS.muted}]}>Available</Text>
+        </Pressable>
+        <Pressable onPress={()=>setTab('budget')} style={[styles.dashboardStat,{backgroundColor:ACTIVE_COLORS.white,borderColor:ACTIVE_COLORS.line}]}>
+          <View style={[styles.dashboardStatIcon,{backgroundColor:'#f5edf8'}]}><MaterialCommunityIcons name="piggy-bank-outline" size={19} color="#89659d"/></View>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={[styles.dashboardStatValue,{color:ACTIVE_COLORS.ink}]}>{peso(saved)}</Text>
+          <Text style={[styles.dashboardStatLabel,{color:ACTIVE_COLORS.muted}]}>Total saved</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Quick actions</Text></View>
+      <View style={styles.quickActionGrid}>
+        {quickActions.map(action=><Pressable key={action.tab} onPress={()=>{setTab(action.tab);resetForm();}} style={[styles.quickAction,{backgroundColor:ACTIVE_COLORS.white,borderColor:ACTIVE_COLORS.line}]}>
+          <View style={[styles.quickActionIcon,{backgroundColor:ACTIVE_COLORS.soft}]}><MaterialCommunityIcons name={action.icon} size={20} color={ACTIVE_COLORS.forest}/></View>
+          <Text style={[styles.quickActionLabel,{color:ACTIVE_COLORS.ink}]}>{action.label}</Text>
+          <MaterialCommunityIcons name="chevron-right" size={17} color={ACTIVE_COLORS.muted}/>
+        </Pressable>)}
+      </View>
+
+      <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Today's schedule</Text><Pressable onPress={()=>setTab('schedule')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View timetable</Text></Pressable></View>
+      <Card>
+        {data.classes.length ? data.classes.map((item,index)=><View key={item.id} style={styles.classTimelineRow}>
+          <View style={styles.classTimelineTime}><Text style={[styles.classTimeText,{color:ACTIVE_COLORS.forest}]}>{timeLabel(item.startMinutes)}</Text><Text style={[styles.classTimeEnd,{color:ACTIVE_COLORS.muted}]}>{timeLabel(item.endMinutes)}</Text></View>
+          <View style={[styles.classTimelineLine,{backgroundColor:ACTIVE_COLORS.line}]}><View style={[styles.classTimelineDot,{backgroundColor:ACTIVE_COLORS.forest}]}/></View>
+          <View style={[styles.classTimelineCard,{backgroundColor:ACTIVE_COLORS.cream,borderColor:ACTIVE_COLORS.line}]}>
+            <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{item.code||item.subjectName||'Class'}</Text>
+            <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{item.subjectName||'Subject'} · {item.kind||'Class'}</Text>
+            <View style={styles.classRoomLine}><MaterialCommunityIcons name="map-marker-outline" size={13} color={ACTIVE_COLORS.muted}/><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted,marginTop:0}]}>{item.room||'Room not set'}</Text></View>
+          </View>
+        </View>) : <View style={styles.dashboardEmpty}><MaterialCommunityIcons name="calendar-blank-outline" size={25} color={ACTIVE_COLORS.muted}/><Text style={[styles.dashboardEmptyTitle,{color:ACTIVE_COLORS.ink}]}>No classes scheduled today</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Your timetable is clear. Enjoy the free time or plan ahead.</Text></View>}
+      </Card>
+
+      <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Tasks and deadlines</Text><Pressable onPress={()=>setTab('tasks')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View tasks</Text></Pressable></View>
+      <Card>
+        <View style={styles.rowBetween}><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink,marginBottom:0}]}>Task progress</Text><Text style={[styles.dashboardProgressLabel,{color:ACTIVE_COLORS.forest}]}>{taskProgress}% done</Text></View>
+        <View style={[styles.progressTrack,{backgroundColor:ACTIVE_COLORS.soft}]}><View style={[styles.progressFill,{width:taskProgress+'%',backgroundColor:ACTIVE_COLORS.forest}]}/></View>
+        {overdueTasks.length ? <Text style={[styles.dashboardAlert,{color:ACTIVE_COLORS.red}]}>{overdueTasks.length} overdue task{overdueTasks.length===1?'':'s'} need attention</Text> : null}
+        {dueToday.length ? <Text style={[styles.dashboardDueToday,{color:ACTIVE_COLORS.forest}]}>{dueToday.length} task{dueToday.length===1?'':'s'} due today</Text> : null}
+        {upcomingTasks.map(task=><Item key={task.id} title={task.title} detail={'Due '+task.dueDate} trailing={task.priority||'Normal'}/>)}
+        {!pendingTasks.length ? <Empty text="All caught up. No pending tasks."/> : null}
+      </Card>
+
+      <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Budget snapshot</Text><Pressable onPress={()=>setTab('budget')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>Open budget</Text></Pressable></View>
+      <Card>
+        <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>AVAILABLE BALANCE</Text>
+        <Text style={[styles.dashboardBalance,{color:ACTIVE_COLORS.forest}]}>{peso(availableBalance)}</Text>
+        <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Your balance updates when you add income, allowance, or expenses.</Text>
+        <View style={styles.dashboardMiniDivider}/>
+        <View style={styles.rowBetween}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Recent expenses</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{data.expenses.length} records</Text></View>
+        {data.expenses.slice(0,3).map(item=><Item key={item.id} title={item.description} detail={item.date} trailing={'−'+peso(item.amount)}/> )}
+        {!data.expenses.length ? <Empty text="No expenses recorded yet."/> : null}
+      </Card>
+
+      <View style={styles.dashboardSectionHeading}><Text style={[styles.dashboardSectionTitle,{color:ACTIVE_COLORS.ink}]}>Savings goals</Text><Pressable onPress={()=>setTab('budget')}><Text style={[styles.dashboardLink,{color:ACTIVE_COLORS.forest}]}>View savings</Text></Pressable></View>
+      <Card>
+        {data.goals.length ? data.goals.slice(0,3).map(goal=>{
+          const amount=Number(goal.savedAmount||0),target=Number(goal.targetAmount||0),percent=target>0?Math.min(100,Math.round(amount/target*100)):0;
+          return <View key={goal.id} style={styles.goalRow}>
+            <View style={styles.rowBetween}><View style={styles.itemText}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{goal.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{peso(amount)} of {peso(target)}</Text></View><Text style={[styles.dashboardProgressLabel,{color:ACTIVE_COLORS.forest}]}>{percent}%</Text></View>
+            <View style={[styles.progressTrack,{backgroundColor:ACTIVE_COLORS.soft}]}><View style={[styles.progressFill,{width:percent+'%',backgroundColor:ACTIVE_COLORS.forest}]}/></View>
+          </View>;
+        }) : <Empty text="Create a savings goal to track your progress here."/>}
+      </Card>
+    </>;
+  };
 
   const renderSchedule = () => <><Heading detail="Monday–Saturday · Local timetable">Schedule</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a class</Text><Field label="Subject code" value={form.code||''} onChangeText={v=>updateForm('code',v)} placeholder="e.g. ITEC 80"/><Field label="Subject name" value={form.subjectName||''} onChangeText={v=>updateForm('subjectName',v)}/><Field label="Professor (optional)" value={form.professor||''} onChangeText={v=>updateForm('professor',v)}/><Field label="Room" value={form.room||''} onChangeText={v=>updateForm('room',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.day||'1'} onChangeText={v=>updateForm('day',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.start||'08:00'} onChangeText={v=>updateForm('start',v)}/><Field label="End (24-hour)" value={form.end||'09:00'} onChangeText={v=>updateForm('end',v)}/><Field label="Type (Lecture or Lab)" value={form.kind||'Lecture'} onChangeText={v=>updateForm('kind',v)}/><Button title="Add class" onPress={addClass}/></Card>
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>{form.activityId?'Edit personal activity':'Add personal activity'}</Text><Field label="Activity title" value={form.activityTitle||''} onChangeText={v=>updateForm('activityTitle',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.activityDay||'1'} onChangeText={v=>updateForm('activityDay',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.activityStart||'10:00'} onChangeText={v=>updateForm('activityStart',v)}/><Field label="End (24-hour)" value={form.activityEnd||'11:00'} onChangeText={v=>updateForm('activityEnd',v)}/><Field label="Location (optional)" value={form.activityLocation||''} onChangeText={v=>updateForm('activityLocation',v)}/><Field label="Notes (optional)" value={form.activityNotes||''} onChangeText={v=>updateForm('activityNotes',v)} multiline/><Button title={form.activityId?'Save activity changes':'Add activity'} onPress={saveActivity}/>{form.activityId?<Button title="Cancel editing" secondary onPress={()=>setForm({})}/>:null}</Card>
@@ -890,7 +999,10 @@ export default function App() {
 const styles=StyleSheet.create({
   safe:{flex:1,backgroundColor:COLORS.cream},flex:{flex:1},loading:{flex:1,alignItems:'center',justifyContent:'center',backgroundColor:COLORS.cream},loadingText:{marginTop:12,color:COLORS.muted,fontSize:14},
   topbar:{paddingHorizontal:18,paddingTop:8,paddingBottom:14,flexDirection:'row',alignItems:'center',justifyContent:'space-between'},brand:{flexDirection:'row',alignItems:'center',gap:11},logo:{width:43,height:43,borderRadius:15,backgroundColor:COLORS.forest,alignItems:'center',justifyContent:'center'},brandEyebrow:{fontSize:9,fontWeight:'800',letterSpacing:1.5,color:COLORS.forest2},brandName:{fontSize:20,fontWeight:'800',color:COLORS.ink},settingsIcon:{width:40,height:40,borderRadius:20,backgroundColor:'#fff',alignItems:'center',justifyContent:'center'},
-  content:{paddingHorizontal:16,paddingBottom:30,gap:14},heading:{marginTop:7,marginBottom:2},h1:{fontSize:26,fontWeight:'800',color:COLORS.ink},sub:{fontSize:12,color:COLORS.muted,marginTop:4},profileLine:{color:COLORS.muted,fontSize:12,marginTop:-8},
+  content:{paddingHorizontal:16,paddingBottom:34,gap:13},heading:{marginTop:7,marginBottom:2},
+  dashboardHero:{borderRadius:24,padding:19,gap:10,overflow:'hidden'},heroTopLine:{flexDirection:'row',alignItems:'center',justifyContent:'space-between'},heroDatePill:{flexDirection:'row',alignItems:'center',gap:6,backgroundColor:'rgba(255,255,255,0.16)',paddingHorizontal:10,paddingVertical:7,borderRadius:20},heroDateText:{color:'#fff',fontSize:11,fontWeight:'700'},heroGreeting:{fontSize:25,fontWeight:'900',color:'#fff',marginTop:8},heroSubtitle:{fontSize:12,color:'rgba(255,255,255,0.78)'},heroDivider:{height:1,backgroundColor:'rgba(255,255,255,0.2)',marginVertical:6},heroNextRow:{flexDirection:'row',alignItems:'center',gap:11},heroNextIcon:{width:42,height:42,borderRadius:14,backgroundColor:'#f7f5ec',alignItems:'center',justifyContent:'center'},heroNextText:{flex:1},heroEyebrow:{fontSize:9,fontWeight:'900',letterSpacing:1.2,color:'rgba(255,255,255,0.72)'},heroClassTitle:{fontSize:15,fontWeight:'800',color:'#fff',marginTop:2},heroClassDetail:{fontSize:11,color:'rgba(255,255,255,0.78)',marginTop:2},
+  dashboardSectionHeading:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:3},dashboardSectionTitle:{fontSize:17,fontWeight:'900'},dashboardSectionHint:{fontSize:10},dashboardLink:{fontSize:11,fontWeight:'800'},dashboardStats:{flexDirection:'row',flexWrap:'wrap',gap:9},dashboardStat:{width:'48%',flexGrow:1,minHeight:111,borderWidth:1,borderRadius:17,padding:12,gap:5},dashboardStatIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},dashboardStatValue:{fontSize:19,fontWeight:'900',marginTop:2},dashboardStatLabel:{fontSize:10,fontWeight:'700'},quickActionGrid:{flexDirection:'row',flexWrap:'wrap',gap:8},quickAction:{width:'48%',flexGrow:1,minHeight:61,borderWidth:1,borderRadius:15,paddingHorizontal:10,paddingVertical:9,flexDirection:'row',alignItems:'center',gap:8},quickActionIcon:{width:34,height:34,borderRadius:11,alignItems:'center',justifyContent:'center'},quickActionLabel:{flex:1,fontSize:11,fontWeight:'800'},classTimelineRow:{flexDirection:'row',minHeight:78,gap:9},classTimelineTime:{width:57,alignItems:'flex-end',paddingTop:8},classTimeText:{fontSize:11,fontWeight:'900'},classTimeEnd:{fontSize:9,marginTop:3},classTimelineLine:{width:2,alignItems:'center',marginVertical:5},classTimelineDot:{width:9,height:9,borderRadius:5,marginTop:5},classTimelineCard:{flex:1,borderWidth:1,borderRadius:13,padding:11,marginBottom:8,gap:3},classRoomLine:{flexDirection:'row',alignItems:'center',gap:4,marginTop:2},dashboardEmpty:{alignItems:'center',paddingVertical:20,gap:5},dashboardEmptyTitle:{fontSize:13,fontWeight:'800'},dashboardProgressLabel:{fontSize:11,fontWeight:'900'},dashboardAlert:{fontSize:11,fontWeight:'800'},dashboardDueToday:{fontSize:11,fontWeight:'800'},dashboardBalance:{fontSize:27,fontWeight:'900',marginTop:-4},dashboardMiniDivider:{height:1,backgroundColor:COLORS.line,marginVertical:4},
+h1:{fontSize:26,fontWeight:'800',color:COLORS.ink},sub:{fontSize:12,color:COLORS.muted,marginTop:4},profileLine:{color:COLORS.muted,fontSize:12,marginTop:-8},
   card:{backgroundColor:COLORS.white,borderRadius:20,padding:16,borderWidth:1,borderColor:COLORS.line,gap:10},cardTitle:{fontSize:16,fontWeight:'800',color:COLORS.ink,marginBottom:3},stats:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{width:'48%',flexGrow:1,minHeight:90,justifyContent:'center'},statValue:{fontSize:21,fontWeight:'800',color:COLORS.forest,marginTop:8},balance:{fontSize:28,fontWeight:'900',color:COLORS.forest},label:{fontSize:10,fontWeight:'700',letterSpacing:.6,color:COLORS.muted},
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
   modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
