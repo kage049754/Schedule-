@@ -203,6 +203,7 @@ export default function SettingsPage() {
         <div className="grid grid-cols-2 gap-2"><button type="button" disabled={reminderBusy} onClick={handleTestReminder} className="rounded-xl border border-forest-200 px-3 py-2.5 text-xs font-semibold text-forest-800">Test notification</button><button type="button" onClick={handleExactAlarm} className="rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-700">Exact alarm access</button></div>
       </section>
 
+      <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
         <div className="flex items-center gap-3"><Settings2 size={19} className="text-forest-700" /><h3 className="font-semibold text-slate-800">Backup and restore</h3></div>
         <p className="text-sm text-slate-500">Export all local tables into one JSON file. Restore replaces the current local records with the contents of the selected backup.</p>
         <button type="button" disabled={busy} onClick={handleExport} className="flex w-full items-center justify-center gap-2 rounded-xl bg-forest-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"><Download size={17} /> Export local backup</button>
