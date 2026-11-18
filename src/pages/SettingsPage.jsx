@@ -10,7 +10,7 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
-  const [reminders, setReminders] = useState({ classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true })
+  const [reminders, setReminders] = useState({ classesEnabled: true, activitiesEnabled: true, tasksEnabled: true, leadMinutes: 10, taskLeadDays: 0, taskReminderTime: '08:00', vibrationEnabled: true, soundEnabled: true })
   const [exactAlarm, setExactAlarm] = useState('unknown')
   const [reminderBusy, setReminderBusy] = useState(false)
   const [profile, setProfile] = useState({ displayName: '', program: '', yearSection: '' })
@@ -186,7 +186,6 @@ export default function SettingsPage() {
         <p className="text-sm leading-6 text-slate-600">Your schedule, subjects, notes, tasks, and budget records are stored in this app on this device. Export a backup before changing or clearing app data.</p>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
       <section className="space-y-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-soft">
         <div><h3 className="font-semibold text-slate-800">Notifications and reminders</h3><p className="mt-1 text-xs leading-5 text-slate-500">Local alerts are scheduled on this device. Android notification permission and battery settings can affect delivery.</p></div>
         <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Upcoming classes</strong><span className="text-xs text-slate-400">Alert before each class</span></span><input type="checkbox" checked={reminders.classesEnabled} onChange={(e) => setReminders({ ...reminders, classesEnabled: e.target.checked })} /></label>
@@ -197,6 +196,7 @@ export default function SettingsPage() {
           <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Deadline alert timing</span><select value={reminders.taskLeadDays ?? 0} onChange={(e) => setReminders({ ...reminders, taskLeadDays: Number(e.target.value) })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value={0}>On due date</option><option value={1}>1 day before</option><option value={2}>2 days before</option><option value={3}>3 days before</option><option value={7}>7 days before</option></select></label>
           <label className="block space-y-1.5"><span className="text-xs font-semibold text-slate-600">Deadline alert time</span><input type="time" value={reminders.taskReminderTime || '08:00'} onChange={(e) => setReminders({ ...reminders, taskReminderTime: e.target.value })} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" /></label>
         </div>
+        <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Notification sound</strong><span className="text-xs text-slate-400">Play the bundled Schedule chime</span></span><input type="checkbox" checked={reminders.soundEnabled !== false} onChange={(e) => setReminders({ ...reminders, soundEnabled: e.target.checked })} /></label>
         <label className="flex items-center justify-between gap-3 text-sm text-slate-700"><span><strong className="block">Vibration</strong><span className="text-xs text-slate-400">Use Android reminder-channel vibration</span></span><input type="checkbox" checked={reminders.vibrationEnabled} onChange={(e) => setReminders({ ...reminders, vibrationEnabled: e.target.checked })} /></label>
         <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">Exact alarm access: <strong className="capitalize text-slate-700">{exactAlarm.replaceAll('-', ' ')}</strong>. Android may deliver inexact reminders if exact-alarm access is unavailable. Do Not Disturb and manufacturer battery controls can also suppress alerts.</div>
         <button type="button" disabled={reminderBusy} onClick={handleSaveReminders} className="w-full rounded-xl bg-forest-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{reminderBusy ? 'Saving…' : 'Save reminder settings'}</button>
