@@ -4,6 +4,9 @@ import {
   StatusBar, StyleSheet, Switch, Text, TextInput, View
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 const CalendarDays = (props) => <MaterialCommunityIcons name="calendar-month-outline" {...props}/>;
 const Wallet = (props) => <MaterialCommunityIcons name="wallet-outline" {...props}/>;
@@ -16,6 +19,7 @@ const GraduationCap = (props) => <MaterialCommunityIcons name="school-outline" {
 const Bell = (props) => <MaterialCommunityIcons name="bell-outline" {...props}/>;
 const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
+import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
@@ -212,6 +216,43 @@ export default function App() {
     try { await db.runAsync('UPDATE profile SET displayName=?,program=?,yearSection=?,updatedAt=? WHERE id=?',(form.displayName??data.profile.displayName??'').trim(),(form.program??data.profile.program??'').trim(),(form.yearSection??data.profile.yearSection??'').trim(),new Date().toISOString(),'local'); resetForm(); changed(); Alert.alert('Saved','Your profile is stored only on this device.'); }
     catch(error){showError(error);}
   };
+  const exportBackup = async () => {
+    try {
+      const backup = await exportNativeBackup();
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const uri = FileSystem.cacheDirectory + 'schedule-backup-' + stamp + '.json';
+      await FileSystem.writeAsStringAsync(uri, JSON.stringify(backup, null, 2));
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/json', dialogTitle: 'Export Schedule backup' });
+      } else {
+        Alert.alert('Backup created', 'The backup was saved to the app cache, but sharing is unavailable on this device.');
+      }
+    } catch (error) { showError(error); }
+  };
+  const importBackup = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/json'], copyToCacheDirectory: true, multiple: false });
+      if (picked.canceled || !picked.assets?.length) return;
+      const raw = await FileSystem.readAsStringAsync(picked.assets[0].uri);
+      let payload;
+      try { payload = JSON.parse(raw); } catch { throw new Error('The selected file is not valid JSON.'); }
+      Alert.alert(
+        'Replace local planner data?',
+        'Importing this backup replaces the records currently stored on this device. Export a backup of your current data first if you may need it.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Replace and import', style: 'destructive', onPress: async () => {
+            try {
+              const count = await restoreNativeBackup(payload);
+              await refreshData(db);
+              changed();
+              Alert.alert('Import complete', count + ' records were restored to this device.');
+            } catch (error) { showError(error); }
+          } },
+        ],
+      );
+    } catch (error) { showError(error); }
+  };
   const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);changed();}catch(e){showError(e);}}}]);
   const toggleTask = async (task) => { await db.runAsync('UPDATE tasks SET completed=?,updatedAt=? WHERE id=?',task.completed?0:1,new Date().toISOString(),task.id); changed(); };
 
@@ -241,7 +282,7 @@ export default function App() {
 
   const renderTasks = () => <><Heading detail="Assignments, deadlines, and priorities.">Tasks</Heading><Card><Text style={styles.cardTitle}>Add a task</Text><Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)}/><Field label="Due date (YYYY-MM-DD, optional)" value={form.dueDate||''} onChangeText={v=>updateForm('dueDate',v)}/><Field label="Priority (Low / Normal / High)" value={form.priority||'Normal'} onChangeText={v=>updateForm('priority',v)}/><Button title="Add task" onPress={addTask}/></Card><Card><Text style={styles.cardTitle}>Your tasks</Text>{data.tasks.map(x=><View key={x.id} style={styles.taskRow}><Pressable onPress={()=>toggleTask(x)} style={[styles.check,x.completed&&styles.checked]}><Text style={styles.checkText}>{x.completed?'✓':''}</Text></Pressable><View style={styles.itemText}><Text style={[styles.itemTitle,x.completed&&styles.done]}>{x.title}</Text><Text style={styles.itemDetail}>{x.dueDate?'Due '+x.dueDate:'No due date'} · {x.priority}</Text></View><Pressable onPress={()=>remove('tasks',x.id)}><Trash2 size={17} color={COLORS.red}/></Pressable></View>)}{!data.tasks.length?<Empty text="No tasks yet."/>:null}</Card></>;
 
-  const renderSettings = () => <><Heading detail="Your data stays on this device.">Settings</Heading><Card><Text style={styles.cardTitle}>Local profile</Text><Field label="Display name" value={form.displayName??data.profile.displayName??''} onChangeText={v=>updateForm('displayName',v)}/><Field label="Program" value={form.program??data.profile.program??''} onChangeText={v=>updateForm('program',v)}/><Field label="Year and section" value={form.yearSection??data.profile.yearSection??''} onChangeText={v=>updateForm('yearSection',v)}/><Button title="Save profile" onPress={saveProfile}/></Card><Card><Text style={styles.cardTitle}>Reminders</Text><View style={styles.switchRow}><Text style={styles.itemTitle}>Enable local reminders</Text><Switch value={remindersEnabled} onValueChange={async value=>{setRemindersEnabled(value);await setSetting('remindersEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><Field label="Class reminder lead time (minutes)" value={leadMinutes} onChangeText={async value=>{setLeadMinutes(value);await setSetting('leadMinutes',value);}} keyboardType="number-pad"/><View style={styles.switchRow}><Text style={styles.itemTitle}>Chime sound</Text><Switch value={soundEnabled} onValueChange={async value=>{setSoundEnabled(value);await setSetting('soundEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><View style={styles.switchRow}><Text style={styles.itemTitle}>Vibration</Text><Switch value={vibrationEnabled} onValueChange={async value=>{setVibrationEnabled(value);await setSetting('vibrationEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><Button title="Request notification permission" secondary onPress={async()=>{const result=await Notifications.requestPermissionsAsync();Alert.alert('Notifications',result.granted?'Permission granted.':'Permission not granted.');}}/><Button title="Send test notification" secondary onPress={async()=>{const permission=await Notifications.requestPermissionsAsync();if(!permission.granted){Alert.alert('Permission required','Allow notifications in Android settings first.');return;}await Notifications.scheduleNotificationAsync({content:{title:'Schedule reminder test',body:'Your local notifications are working.',sound:soundEnabled?'schedule_chime.wav':null},trigger:null});Alert.alert('Sent','A local test notification was requested.');}}/></Card><Card><Text style={styles.cardTitle}>Storage</Text><Text style={styles.itemDetail}>Native SQLite database: schedule-local.db. No login, backend, or cloud sync is used.</Text><Button title="Refresh local data" secondary onPress={changed}/></Card></>;
+  const renderSettings = () => <><Heading detail="Your data stays on this device.">Settings</Heading><Card><Text style={styles.cardTitle}>Local profile</Text><Field label="Display name" value={form.displayName??data.profile.displayName??''} onChangeText={v=>updateForm('displayName',v)}/><Field label="Program" value={form.program??data.profile.program??''} onChangeText={v=>updateForm('program',v)}/><Field label="Year and section" value={form.yearSection??data.profile.yearSection??''} onChangeText={v=>updateForm('yearSection',v)}/><Button title="Save profile" onPress={saveProfile}/></Card><Card><Text style={styles.cardTitle}>Reminders</Text><View style={styles.switchRow}><Text style={styles.itemTitle}>Enable local reminders</Text><Switch value={remindersEnabled} onValueChange={async value=>{setRemindersEnabled(value);await setSetting('remindersEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><Field label="Class reminder lead time (minutes)" value={leadMinutes} onChangeText={async value=>{setLeadMinutes(value);await setSetting('leadMinutes',value);}} keyboardType="number-pad"/><View style={styles.switchRow}><Text style={styles.itemTitle}>Chime sound</Text><Switch value={soundEnabled} onValueChange={async value=>{setSoundEnabled(value);await setSetting('soundEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><View style={styles.switchRow}><Text style={styles.itemTitle}>Vibration</Text><Switch value={vibrationEnabled} onValueChange={async value=>{setVibrationEnabled(value);await setSetting('vibrationEnabled',value);}} trackColor={{true:COLORS.forest2}}/></View><Button title="Request notification permission" secondary onPress={async()=>{const result=await Notifications.requestPermissionsAsync();Alert.alert('Notifications',result.granted?'Permission granted.':'Permission not granted.');}}/><Button title="Send test notification" secondary onPress={async()=>{const permission=await Notifications.requestPermissionsAsync();if(!permission.granted){Alert.alert('Permission required','Allow notifications in Android settings first.');return;}await Notifications.scheduleNotificationAsync({content:{title:'Schedule reminder test',body:'Your local notifications are working.',sound:soundEnabled?'schedule_chime.wav':null},trigger:null});Alert.alert('Sent','A local test notification was requested.');}}/></Card><Card><Text style={styles.cardTitle}>Backup and restore</Text><Text style={styles.itemDetail}>Export a portable Schedule JSON backup or import a backup from the previous Capacitor app. Import replaces all local records on this device.</Text><Button title="Export local backup" onPress={exportBackup}/><Button title="Import JSON backup" secondary onPress={importBackup}/></Card><Card><Text style={styles.cardTitle}>Storage</Text><Text style={styles.itemDetail}>Native SQLite database: schedule-local.db. No login, backend, or cloud sync is used.</Text><Button title="Refresh local data" secondary onPress={changed}/></Card></>;
 
   const screen = {home:renderHome,schedule:renderSchedule,budget:renderBudget,notes:renderNotes,tasks:renderTasks,settings:renderSettings}[tab];
   if (busy) return <SafeAreaView style={styles.loading}><StatusBar barStyle="dark-content" backgroundColor={COLORS.cream}/><GraduationCap size={34} color={COLORS.forest}/><Text style={styles.loadingText}>Preparing your local planner…</Text></SafeAreaView>;
