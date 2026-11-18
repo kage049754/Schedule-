@@ -22,5 +22,6 @@
   },
   "devDependencies": {
     "expo-doctor": "^1.17.0"
-  }
+  },
+  "type": "module"
 }
