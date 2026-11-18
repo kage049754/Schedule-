@@ -4,7 +4,7 @@ export function parseMoneyToCentavos(value) {
   return Math.round(amount * 100);
 }
 export function parseTimeToMinutes(value) {
-  const match = /^(\\d{1,2}):(\\d{2})$/.exec(String(value).trim());
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value).trim());
   if (!match) throw new Error('Use 24-hour time, for example 08:30.');
   const hours = Number(match[1]), minutes = Number(match[2]);
   if (hours > 23 || minutes > 59) throw new Error('Enter a valid time.');
