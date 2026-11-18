@@ -6,7 +6,7 @@ export const NATIVE_BACKUP_TABLES = {
   profile: ['id', 'displayName', 'program', 'yearSection', 'updatedAt'],
   subjects: ['id', 'code', 'name', 'professor', 'lectureRoom', 'labRoom', 'color', 'createdAt'],
   scheduleSlots: ['id', 'subjectId', 'day', 'startMinutes', 'endMinutes', 'kind', 'room', 'active', 'createdAt'],
-  activities: ['id', 'title', 'day', 'startMinutes', 'endMinutes', 'date', 'location', 'notes', 'createdAt'],
+  activities: ['id', 'title', 'day', 'startMinutes', 'endMinutes', 'date', 'location', 'notes', 'createdAt', 'updatedAt'],
   allowances: ['id', 'amount', 'period', 'startDate', 'endDate', 'createdAt'],
   income: ['id', 'amount', 'source', 'date', 'createdAt'],
   expenses: ['id', 'amount', 'description', 'categoryId', 'date', 'createdAt'],

@@ -28,3 +28,17 @@ export function calculateAvailableBalance({ allowances = [], income = [], expens
   const spent = expenses.filter(x=>x.date<=today).reduce((sum,x)=>sum+Number(x.amount||0),0);
   return allowance + earned - spent;
 }
+
+export function normalizeActivityInput(input = {}) {
+  const title = String(input.title || '').trim();
+  const day = Number(input.day);
+  const startMinutes = Number(input.startMinutes);
+  const endMinutes = Number(input.endMinutes);
+  if (!title) throw new Error('Enter an activity title.');
+  if (!Number.isInteger(day) || day < 1 || day > 6) throw new Error('Choose Monday–Saturday.');
+  if (!Number.isInteger(startMinutes) || !Number.isInteger(endMinutes)
+      || startMinutes < 0 || endMinutes > 1440 || endMinutes <= startMinutes) {
+    throw new Error('End time must be later than start time.');
+  }
+  return { title, day, startMinutes, endMinutes, location: String(input.location || '').trim(), notes: String(input.notes || '').trim() };
+}

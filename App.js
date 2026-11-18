@@ -20,7 +20,7 @@ const Bell = (props) => <MaterialCommunityIcons name="bell-outline" {...props}/>
 const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 const TABS = [
@@ -37,6 +37,7 @@ const peso = (centavos = 0) => '₱' + (Number(centavos || 0) / 100).toLocaleStr
 const parseAmount = parseMoneyToCentavos;
 const parseTime = parseTimeToMinutes;
 const timeLabel = (mins) => new Date(2000,0,1,Math.floor(mins/60),mins%60).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
+const timeInput = (mins) => String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0');
 const showError = (error) => Alert.alert('Schedule', error?.message || 'Something went wrong.');
 
 Notifications.setNotificationHandler({
@@ -61,7 +62,7 @@ export default function App() {
   const [db, setDb] = useState(null);
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
-  const [data, setData] = useState({ profile: {}, classes: [], activities: [], subjects: [], tasks: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [] });
+  const [data, setData] = useState({ profile: {}, classes: [], allClasses: [], activities: [], allActivities: [], subjects: [], tasks: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [] });
   const [form, setForm] = useState({});
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [leadMinutes, setLeadMinutes] = useState('10');
@@ -71,11 +72,12 @@ export default function App() {
   const refreshData = async (database = db) => {
     if (!database) return;
     const day = new Date().getDay(), today = todayKey();
-    const [profile, classes, allClasses, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories] = await Promise.all([
+    const [profile, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories] = await Promise.all([
       database.getFirstAsync('SELECT * FROM profile WHERE id = ?', 'local'),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.day=? AND s.active=1 ORDER BY s.startMinutes', day),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.active=1 ORDER BY s.day,s.startMinutes'),
       database.getAllAsync('SELECT * FROM activities WHERE day=? ORDER BY startMinutes', day),
+      database.getAllAsync('SELECT * FROM activities ORDER BY day,startMinutes'),
       database.getAllAsync('SELECT * FROM subjects ORDER BY code'),
       database.getAllAsync('SELECT * FROM tasks ORDER BY completed, dueDate IS NULL, dueDate'),
       database.getAllAsync('SELECT * FROM income ORDER BY date DESC, id DESC'),
@@ -85,7 +87,7 @@ export default function App() {
       database.getAllAsync("SELECT g.*, COALESCE((SELECT SUM(CASE WHEN e.type='withdrawal' THEN -e.amount ELSE e.amount END) FROM savingsEntries e WHERE e.goalId=g.id),0) AS savedAmount FROM savingsGoals g ORDER BY g.id DESC"),
       database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name')
     ]);
-    setData({ profile: profile || {}, classes, allClasses, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories });
+    setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories });
   };
 
   useEffect(() => {
@@ -179,6 +181,45 @@ export default function App() {
     } catch(error){showError(error);}
   };
 
+  const saveActivity = async () => {
+    try {
+      const activity = normalizeActivityInput({
+        title: form.activityTitle,
+        day: Number(form.activityDay || '1'),
+        startMinutes: parseTime(form.activityStart || '10:00'),
+        endMinutes: parseTime(form.activityEnd || '11:00'),
+        location: form.activityLocation || '',
+        notes: form.activityNotes || '',
+      });
+      const editingId = Number(form.activityId || 0);
+      const [slots, activities] = await Promise.all([
+        db.getAllAsync('SELECT startMinutes,endMinutes FROM scheduleSlots WHERE day=? AND active=1', activity.day),
+        db.getAllAsync('SELECT id,startMinutes,endMinutes FROM activities WHERE day=?', activity.day),
+      ]);
+      const otherActivities = activities.filter(item => item.id !== editingId);
+      if (hasTimeConflict([...slots, ...otherActivities], activity)) {
+        throw new Error('Schedule conflict: this activity overlaps an existing class or activity. Nothing was changed.');
+      }
+      if (editingId) {
+        await db.runAsync('UPDATE activities SET title=?,day=?,startMinutes=?,endMinutes=?,location=?,notes=?,updatedAt=? WHERE id=?',
+          activity.title, activity.day, activity.startMinutes, activity.endMinutes, activity.location, activity.notes, new Date().toISOString(), editingId);
+      } else {
+        await db.runAsync('INSERT INTO activities (title,day,startMinutes,endMinutes,location,notes,createdAt) VALUES (?,?,?,?,?,?,?)',
+          activity.title, activity.day, activity.startMinutes, activity.endMinutes, activity.location, activity.notes, new Date().toISOString());
+      }
+      resetForm();
+      changed();
+    } catch (error) { showError(error); }
+  };
+  const editActivity = (activity) => setForm({
+    activityId: String(activity.id),
+    activityTitle: activity.title,
+    activityDay: String(activity.day),
+    activityStart: timeInput(activity.startMinutes),
+    activityEnd: timeInput(activity.endMinutes),
+    activityLocation: activity.location || '',
+    activityNotes: activity.notes || '',
+  });
   const addExpense = async () => {
     try { const amount=parseAmount(form.amount), description=(form.description||'').trim(); if(!description) throw new Error('Enter what the expense was for.');
       let category = await db.getFirstAsync("SELECT * FROM categories WHERE lower(name)=lower(?) AND type='expense'",(form.category||'Food').trim());
@@ -265,7 +306,9 @@ export default function App() {
   </>;
 
   const renderSchedule = () => <><Heading detail="Monday–Saturday · Local timetable">Schedule</Heading><Card><Text style={styles.cardTitle}>Add a class</Text><Field label="Subject code" value={form.code||''} onChangeText={v=>updateForm('code',v)} placeholder="e.g. ITEC 80"/><Field label="Subject name" value={form.subjectName||''} onChangeText={v=>updateForm('subjectName',v)}/><Field label="Professor (optional)" value={form.professor||''} onChangeText={v=>updateForm('professor',v)}/><Field label="Room" value={form.room||''} onChangeText={v=>updateForm('room',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.day||'1'} onChangeText={v=>updateForm('day',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.start||'08:00'} onChangeText={v=>updateForm('start',v)}/><Field label="End (24-hour)" value={form.end||'09:00'} onChangeText={v=>updateForm('end',v)}/><Field label="Type (Lecture or Lab)" value={form.kind||'Lecture'} onChangeText={v=>updateForm('kind',v)}/><Button title="Add class" onPress={addClass}/></Card>
-    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.allClasses.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries yet."/>}</Card>
+    <Card><Text style={styles.cardTitle}>{form.activityId?'Edit personal activity':'Add personal activity'}</Text><Field label="Activity title" value={form.activityTitle||''} onChangeText={v=>updateForm('activityTitle',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.activityDay||'1'} onChangeText={v=>updateForm('activityDay',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.activityStart||'10:00'} onChangeText={v=>updateForm('activityStart',v)}/><Field label="End (24-hour)" value={form.activityEnd||'11:00'} onChangeText={v=>updateForm('activityEnd',v)}/><Field label="Location (optional)" value={form.activityLocation||''} onChangeText={v=>updateForm('activityLocation',v)}/><Field label="Notes (optional)" value={form.activityNotes||''} onChangeText={v=>updateForm('activityNotes',v)} multiline/><Button title={form.activityId?'Save activity changes':'Add activity'} onPress={saveActivity}/>{form.activityId?<Button title="Cancel editing" secondary onPress={()=>setForm({})}/>:null}</Card>
+    <Card><Text style={styles.cardTitle}>Weekly timetable · Classes</Text>{data.allClasses.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries yet."/>}</Card>
+    <Card><Text style={styles.cardTitle}>Personal activities</Text>{data.allActivities.length?data.allActivities.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+x.title} detail={timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)+(x.location?' · '+x.location:'')+(x.notes?' · '+x.notes:'')} onPress={()=>editActivity(x)} onDelete={()=>remove('activities',x.id)}/>):<Empty text="No personal activities yet."/>}</Card>
     <Card><Text style={styles.cardTitle}>Subjects</Text>{data.subjects.map(x=><Item key={x.id} title={x.code+' — '+x.name} detail={x.professor||'Professor not set'}/>)}</Card>
   </>;
 
