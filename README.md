@@ -8,7 +8,7 @@ An offline-first student planner and personal finance Android application.
 - React Native + JavaScript, using Expo SDK 58 (React Native 0.88)
 - Native Android packaging through Expo Prebuild + Gradle (no EAS account required)
 - Expo SQLite for on-device relational persistence
-- Lucide React Native for native vector icons
+- Expo Vector Icons (`@expo/vector-icons`) for native icons
 - Expo Notifications for local Android notifications
 
 ## Offline-only architecture
