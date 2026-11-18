@@ -134,10 +134,6 @@ jobs:
           const fs = require('node:fs')
           const file = 'android/app/src/main/AndroidManifest.xml'
           let xml = fs.readFileSync(file, 'utf8')
-          const permission = '<uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />'
-          if (!xml.includes('android.permission.RECEIVE_BOOT_COMPLETED')) {
-            xml = xml.replace(/<application\b/, `${permission}\n    <application`)
-          }
           const receiver = `
               <receiver
                   android:name=".ScheduleWidgetProvider"
@@ -161,8 +157,15 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
-      - name: Verify APK
-        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify APK and notification reboot receiver
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          $ANDROID_HOME/build-tools/35.0.0/aapt dump xmltree "$APK" AndroidManifest.xml > /tmp/schedule-manifest.txt
+          grep -q 'LocalNotificationRestoreReceiver' /tmp/schedule-manifest.txt
+          grep -q 'RECEIVE_BOOT_COMPLETED' /tmp/schedule-manifest.txt
+          test -s android/app/src/main/res/raw/schedule_chime.wav
+          file android/app/src/main/res/raw/schedule_chime.wav
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
