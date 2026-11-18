@@ -84,7 +84,7 @@ export default function SettingsPage() {
 
   async function handleTestReminder() {
     setReminderBusy(true); setError(''); setNotice('')
-    try { await sendTestReminder(reminders.vibrationEnabled); setNotice('Test alert scheduled for five seconds from now.') }
+    try { await sendTestReminder(reminders.vibrationEnabled, reminders.soundEnabled !== false); setNotice('Test alert scheduled for five seconds from now.') }
     catch (reason) { setError(reason?.message || 'Unable to schedule a test alert.') }
     finally { setReminderBusy(false) }
   }
