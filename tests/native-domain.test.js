@@ -88,7 +88,7 @@ test('savings withdrawals cannot exceed the goal balance', () => {
 
 test('money reports filter by period and sort newest transactions first', () => {
   const result = summarizeBudgetTransactions(
-    [{ id: 1, amount: 5000, source: 'Work', date: '2026-11-18' }, { id: 2, amount: 1000, source: 'Refund', date: '2026-11-02' }],
+    [{ id: 1, amount: 5000, source: 'Work', date: '2026-11-18' }, { id: 2, amount: 1000, source: 'Refund', date: '2026-10-02' }],
     [{ id: 3, amount: 2000, description: 'Lunch', date: '2026-11-18' }, { id: 4, amount: 3000, description: 'Books', date: '2026-10-31' }],
     'month',
     new Date(2026, 10, 19)

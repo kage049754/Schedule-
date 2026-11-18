@@ -134,3 +134,6 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Added date-scoped money reports for today, Monday–Sunday week, calendar month, and all-time, including transaction deletion.
 - [x] Expanded native SQLite refresh data for savings entries and category limits; dashboard balance, totals, and savings use the same local records.
 - [ ] Verify budget changes update Dashboard and survive app restart on a physical Android device.
+
+- [x] Investigated Run #250 test logs (25/27 passing), corrected the escaped date-key validator and fixed the monthly-report fixture to place its exclusion record in the previous month.
+- [ ] Re-run the full CI suite and Android APK verification after the Budget port fixes.
