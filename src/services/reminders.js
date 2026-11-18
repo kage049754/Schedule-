@@ -52,11 +52,11 @@ export async function openExactAlarmSettings() {
   return LocalNotifications.changeExactNotificationSetting()
 }
 
-export async function sendTestReminder(vibrationEnabled = true) {
+export async function sendTestReminder(vibrationEnabled = true, soundEnabled = true) {
   if (!Capacitor.isNativePlatform()) throw new Error('Test notifications are available in the installed Android app.')
   const permission = await requestReminderPermission()
   if (permission.display !== 'granted') throw new Error('Notification permission was not granted.')
-  const channelId = await ensureReminderChannel(vibrationEnabled, true)
+  const channelId = await ensureReminderChannel(vibrationEnabled, soundEnabled)
   return LocalNotifications.schedule({ notifications: [{
     id: 1900001,
     title: 'Schedule reminder test',
