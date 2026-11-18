@@ -1,10 +1,31 @@
 # Implementation status
 
-## Current milestone: Live synchronization, reminders, native widget, and APK verification
+## Current milestone: Capacitor-to-React Native migration
+
+**Migration branch:** `react-native-migration`  
+**Stable baseline:** `main` remains the last known-good Capacitor APK; do not remove it until React Native feature parity and backup import are verified.  
+**New architecture:** React Native 0.88 + Expo SDK 58 + Expo SQLite + Expo Notifications.  
+**Backend:** None; fully offline core.
+
+### React Native work started
+- [x] Created an isolated migration branch from the latest verified main commit.
+- [x] Replaced the branch package scripts/dependencies with Expo + React Native runtime packages; removed Capacitor, Vite, Tailwind, React DOM, and Dexie from the native runtime dependency list.
+- [x] Added Expo app configuration, Android package identity, and native entry point.
+- [x] Added SQLite schema for profile, subjects, schedule, activities, allowances, income, expenses, categories, savings, category budgets, notes, tasks, checklists, and settings.
+- [x] Added a native React Native screen shell for Dashboard, Schedule, Budget, Notes, Tasks, and Settings, with initial SQLite-backed create/delete flows.
+- [x] Added native domain helpers and tests for centavo precision, time validation, overlap prevention, allowance ranges, and balance calculation.
+- [x] Added reproducible bundled reminder chime generation and Expo Notifications configuration.
+- [x] Replaced the Capacitor GitHub Actions workflow with an Expo Prebuild + Gradle Android APK workflow on the migration branch.
+- [ ] Verify Expo dependency compatibility, unit tests, native Gradle build, notification sound/boot permission, and APK artifact in CI.
+- [ ] Port complete feature parity: full weekly timetable editor/activities, savings and category limits, note editing/archive/pin/search, task checklists/priority views, navigation customization, backup export/import, widget, snooze/dismiss actions.
+- [ ] Implement import of existing `schedule-local-backup` JSON into SQLite before replacing the stable branch.
+- [ ] Device QA on Android; physical behavior is not yet verified.
+
+## Previous Capacitor baseline (preserved on main)
 
 **Status:** Core modules and cross-module live synchronization implemented; latest Android debug APK with reminder actions built and extracted; all 36 tests pass in [Run #190](https://github.com/kage049754/Schedule-/actions/runs/44164049786); latest Android APK extracted and checked  
 **Repository:** kage049754/Schedule-  
-**Architecture:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
+**Previous architecture on main:** React + JavaScript + Vite + Tailwind + Capacitor + Dexie.js  
 **Backend:** None. Fully offline core; local-only data.
 
 ### Completed and previously verified
