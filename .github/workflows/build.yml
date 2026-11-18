@@ -98,7 +98,32 @@ jobs:
       - name: Install native home-screen widget
         run: |
           mkdir -p android/app/src/main/java/com/schedule/studentplanner
-          mkdir -p android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/values
+          mkdir -p android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/values android/app/src/main/res/raw
+          node <<'NODE'
+          const fs = require('node:fs')
+          const sampleRate = 22050
+          const notes = [{ hz: 659.25, duration: 0.22 }, { hz: 783.99, duration: 0.24 }, { hz: 987.77, duration: 0.42 }]
+          const samples = []
+          for (const note of notes) {
+            const count = Math.floor(sampleRate * note.duration)
+            for (let i = 0; i < count; i++) {
+              const attack = Math.min(1, i / (sampleRate * 0.012))
+              const release = Math.min(1, (count - i) / (sampleRate * 0.07))
+              const envelope = Math.min(attack, release) * 0.22
+              const fundamental = Math.sin(2 * Math.PI * note.hz * i / sampleRate)
+              const overtone = 0.22 * Math.sin(2 * Math.PI * note.hz * 2 * i / sampleRate)
+              samples.push(Math.max(-1, Math.min(1, (fundamental + overtone) * envelope)))
+            }
+          }
+          const data = Buffer.alloc(samples.length * 2)
+          samples.forEach((sample, index) => data.writeInt16LE(Math.round(sample * 32767), index * 2))
+          const header = Buffer.alloc(44)
+          header.write('RIFF', 0); header.writeUInt32LE(36 + data.length, 4); header.write('WAVE', 8)
+          header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20)
+          header.writeUInt16LE(1, 22); header.writeUInt32LE(sampleRate, 24); header.writeUInt32LE(sampleRate * 2, 28)
+          header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34); header.write('data', 36); header.writeUInt32LE(data.length, 40)
+          fs.writeFileSync('android/app/src/main/res/raw/schedule_chime.wav', Buffer.concat([header, data]))
+          NODE
           cp native/android/src/main/java/com/schedule/studentplanner/MainActivity.java android/app/src/main/java/com/schedule/studentplanner/MainActivity.java
           cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java
           cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java
