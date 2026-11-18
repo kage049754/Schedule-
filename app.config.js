@@ -9,7 +9,8 @@ export default {
     android: { package: "com.schedule.studentplanner", versionCode: 2, permissions: ["POST_NOTIFICATIONS", "SCHEDULE_EXACT_ALARM", "VIBRATE"] },
     plugins: [
       ["expo-notifications", { sounds: ["./assets/schedule_chime.wav"], defaultChannel: "schedule-reminders" }],
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/withEmbeddedDebugBundle"
     ],
     extra: { architecture: "react-native-expo-sqlite" }
   }
