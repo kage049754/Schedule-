@@ -31,9 +31,10 @@
 - [x] Added SQLite `activities.date` migration so legacy calendar dates are retained alongside weekday values.
 - [x] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the workflow APK-verification step in [Run #232](https://github.com/kage049754/Schedule-/actions/runs/44252235863). Artifact download and independent package inspection remain pending.
 - [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
-- [ ] Port remaining parity: personal activity CRUD/editor, savings and category limits, note edit/search/pin/archive, task checklists, expanded profile/privacy controls, and native widget.
+- [x] Ported native Budget parity: date-specific income/expense entries, editable category creation by expense entry, daily/weekly/monthly category limits, savings goals, deposits/withdrawals with transaction-protected balance checks, and today/week/month/all-time money reports with transaction deletion.
+- [ ] Complete remaining native parity: note edit/search/pin/archive, task checklists, and native widget verification.
 - [x] Added a native Appearance section with persistent Forest (default), Sunset, and Monochrome light themes; palette is applied to app surfaces, cards, fields, buttons, balance/stat accents, and bottom navigation.
-- [ ] Verify appearance persistence and visual consistency in the next Android APK build and on the target phone.
+- [ ] Verify appearance and Budget preference/data persistence after app restart and visual consistency on the target phone.
 - [ ] Device QA on Android; physical behavior is not yet verified.
 
 ## Previous Capacitor baseline (preserved on main)
@@ -126,3 +127,10 @@ The migration branch now contains the portable backup service (`src-native/backu
 
 ### Development rule
 Inspect → research → plan the smallest useful change → implement → test → wait for completed CI → inspect logs → fix → rebuild → verify artifacts → update progress → select the next task. Do not stop merely because a commit or queued workflow exists. Continue while the conversation and available tools remain active; do not claim background work after the response ends.
+### Native Budget parity implementation
+- [x] Added date-specific income and expense entry with calendar-date validation.
+- [x] Added savings goal creation, deposits, withdrawals, and transactional protection against withdrawing more than the goal balance.
+- [x] Added active-period category spending limits with current spending, remaining amount, over-limit status, and deletion.
+- [x] Added date-scoped money reports for today, Monday–Sunday week, calendar month, and all-time, including transaction deletion.
+- [x] Expanded native SQLite refresh data for savings entries and category limits; dashboard balance, totals, and savings use the same local records.
+- [ ] Verify budget changes update Dashboard and survive app restart on a physical Android device.

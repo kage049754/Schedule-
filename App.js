@@ -22,7 +22,7 @@ import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { normalizeNavigationPreferences } from './src-native/navigation';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 let ACTIVE_COLORS = COLORS;
@@ -65,7 +65,7 @@ export default function App() {
   const [db, setDb] = useState(null);
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
-  const [data, setData] = useState({ profile: {}, classes: [], allClasses: [], activities: [], allActivities: [], subjects: [], tasks: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [] });
+  const [data, setData] = useState({ profile: {}, classes: [], allClasses: [], activities: [], allActivities: [], subjects: [], tasks: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [], savingsEntries: [], categoryBudgets: [] });
   const [form, setForm] = useState({});
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [leadMinutes, setLeadMinutes] = useState('10');
@@ -74,12 +74,13 @@ export default function App() {
   const [appearance, setAppearance] = useState('forest');
   const [navigationOrder, setNavigationOrder] = useState(TABS.map(item => item.id));
   const [hiddenTabs, setHiddenTabs] = useState([]);
+  const [reportPeriod, setReportPeriod] = useState('month');
   ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
 
   const refreshData = async (database = db) => {
     if (!database) return;
     const day = new Date().getDay(), today = todayKey();
-    const [profile, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories] = await Promise.all([
+    const [profile, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets] = await Promise.all([
       database.getFirstAsync('SELECT * FROM profile WHERE id = ?', 'local'),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.day=? AND s.active=1 ORDER BY s.startMinutes', day),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.active=1 ORDER BY s.day,s.startMinutes'),
@@ -92,9 +93,11 @@ export default function App() {
       database.getAllAsync('SELECT * FROM allowances'),
       database.getAllAsync('SELECT * FROM notes WHERE archived=0 ORDER BY pinned DESC, updatedAt DESC'),
       database.getAllAsync("SELECT g.*, COALESCE((SELECT SUM(CASE WHEN e.type='withdrawal' THEN -e.amount ELSE e.amount END) FROM savingsEntries e WHERE e.goalId=g.id),0) AS savedAmount FROM savingsGoals g ORDER BY g.id DESC"),
-      database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name')
+      database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name'),
+      database.getAllAsync('SELECT * FROM savingsEntries ORDER BY date DESC, id DESC'),
+      database.getAllAsync('SELECT * FROM categoryBudgets ORDER BY startDate DESC, id DESC')
     ]);
-    setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories });
+    setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets });
   };
 
   useEffect(() => {
@@ -232,26 +235,99 @@ export default function App() {
     activityNotes: activity.notes || '',
   });
   const addExpense = async () => {
-    try { const amount=parseAmount(form.amount), description=(form.description||'').trim(); if(!description) throw new Error('Enter what the expense was for.');
-      let category = await db.getFirstAsync("SELECT * FROM categories WHERE lower(name)=lower(?) AND type='expense'",(form.category||'Food').trim());
-      if(!category){const result=await db.runAsync("INSERT INTO categories (name,type,active) VALUES (?,'expense',1)",(form.category||'Food').trim());category={id:result.lastInsertRowId};}
-      await db.runAsync('INSERT INTO expenses (amount,description,categoryId,date,createdAt) VALUES (?,?,?,?,?)',amount,description,category.id,todayKey(),new Date().toISOString());
+    try {
+      const amount = parseAmount(form.amount);
+      const description = (form.description || '').trim();
+      const categoryName = (form.category || '').trim();
+      const date = (form.expenseDate || todayKey()).trim();
+      if (!description) throw new Error('Enter what the expense was for.');
+      if (!isValidDateKey(date)) throw new Error('Enter a valid expense date using YYYY-MM-DD.');
+      let category = null;
+      if (categoryName) {
+        category = await db.getFirstAsync("SELECT * FROM categories WHERE lower(name)=lower(?) AND type='expense' AND active=1", categoryName);
+        if (!category) {
+          const result = await db.runAsync("INSERT INTO categories (name,type,active) VALUES (?,'expense',1)", categoryName);
+          category = { id: result.lastInsertRowId };
+        }
+      }
+      await db.runAsync('INSERT INTO expenses (amount,description,categoryId,date,createdAt) VALUES (?,?,?,?,?)',
+        amount, description, category?.id ?? null, date, new Date().toISOString());
       resetForm(); changed();
-    } catch(error){showError(error);}
+    } catch (error) { showError(error); }
   };
   const addAllowance = async () => {
     try {
-      const amount=parseAmount(form.allowanceAmount), period=(form.allowancePeriod||'weekly').toLowerCase();
-      if(!['daily','weekly','monthly'].includes(period)) throw new Error('Choose daily, weekly, or monthly.');
-      const range=getAllowanceRange(period);
-      await db.runAsync('INSERT INTO allowances (amount,period,startDate,endDate,createdAt) VALUES (?,?,?,?,?)',amount,period,range.startDate,range.endDate,new Date().toISOString());
+      const amount = parseAmount(form.allowanceAmount);
+      const period = (form.allowancePeriod || 'weekly').toLowerCase();
+      const range = getAllowanceRange(period);
+      await db.runAsync('INSERT INTO allowances (amount,period,startDate,endDate,createdAt) VALUES (?,?,?,?,?)',
+        amount, period, range.startDate, range.endDate, new Date().toISOString());
       resetForm(); changed();
-    } catch(error){showError(error);}
+    } catch (error) { showError(error); }
   };
   const addIncome = async () => {
-    try { const amount=parseAmount(form.incomeAmount), source=(form.source||'').trim(); if(!source) throw new Error('Enter an income source.');
-      await db.runAsync('INSERT INTO income (amount,source,date,createdAt) VALUES (?,?,?,?)',amount,source,todayKey(),new Date().toISOString()); resetForm(); changed();
-    } catch(error){showError(error);}
+    try {
+      const amount = parseAmount(form.incomeAmount);
+      const source = (form.source || '').trim();
+      const date = (form.incomeDate || todayKey()).trim();
+      if (!source) throw new Error('Enter an income source.');
+      if (!isValidDateKey(date)) throw new Error('Enter a valid income date using YYYY-MM-DD.');
+      await db.runAsync('INSERT INTO income (amount,source,date,createdAt) VALUES (?,?,?,?)',
+        amount, source, date, new Date().toISOString());
+      resetForm(); changed();
+    } catch (error) { showError(error); }
+  };
+  const addSavingsGoal = async () => {
+    try {
+      const title = (form.goalTitle || '').trim();
+      const target = parseAmount(form.goalTargetAmount);
+      if (!title) throw new Error('Enter a savings goal name.');
+      await db.runAsync('INSERT INTO savingsGoals (title,targetAmount,createdAt) VALUES (?,?,?)',
+        title, target, new Date().toISOString());
+      resetForm(); changed();
+    } catch (error) { showError(error); }
+  };
+  const addSavingsEntry = async () => {
+    try {
+      const goalId = Number(form.savingGoalId);
+      const amount = parseAmount(form.savingAmount);
+      const type = form.savingType || 'deposit';
+      const date = (form.savingDate || todayKey()).trim();
+      if (!Number.isInteger(goalId) || goalId <= 0) throw new Error('Choose a savings goal.');
+      if (!['deposit', 'withdrawal'].includes(type)) throw new Error('Choose deposit or withdrawal.');
+      if (!isValidDateKey(date)) throw new Error('Enter a valid savings date using YYYY-MM-DD.');
+      await db.withTransactionAsync(async () => {
+        const goal = await db.getFirstAsync('SELECT id FROM savingsGoals WHERE id=?', goalId);
+        if (!goal) throw new Error('This savings goal no longer exists.');
+        const entries = await db.getAllAsync('SELECT amount,type FROM savingsEntries WHERE goalId=?', goalId);
+        if (type === 'withdrawal') validateSavingsWithdrawal(entries, amount);
+        await db.runAsync('INSERT INTO savingsEntries (goalId,amount,type,date) VALUES (?,?,?,?)',
+          goalId, amount, type, date);
+      });
+      resetForm(); changed();
+    } catch (error) { showError(error); }
+  };
+  const addCategoryLimit = async () => {
+    try {
+      const categoryId = Number(form.limitCategoryId);
+      const amount = parseAmount(form.limitAmount);
+      const period = (form.limitPeriod || 'weekly').toLowerCase();
+      if (!Number.isInteger(categoryId) || categoryId <= 0) throw new Error('Choose an expense category.');
+      const category = await db.getFirstAsync("SELECT id FROM categories WHERE id=? AND type='expense' AND active=1", categoryId);
+      if (!category) throw new Error('The selected expense category is unavailable.');
+      const range = getAllowanceRange(period);
+      const existing = await db.getFirstAsync(
+        'SELECT id FROM categoryBudgets WHERE categoryId=? AND period=? AND startDate=? AND endDate=? ORDER BY id LIMIT 1',
+        categoryId, period, range.startDate, range.endDate
+      );
+      if (existing) {
+        await db.runAsync('UPDATE categoryBudgets SET amount=? WHERE id=?', amount, existing.id);
+      } else {
+        await db.runAsync('INSERT INTO categoryBudgets (categoryId,amount,period,startDate,endDate) VALUES (?,?,?,?,?)',
+          categoryId, amount, period, range.startDate, range.endDate);
+      }
+      resetForm(); changed();
+    } catch (error) { showError(error); }
   };
   const addNote = async () => {
     try { const title=(form.noteTitle||'').trim(), content=(form.noteContent||'').trim(); if(!title||!content) throw new Error('Enter a title and note content.');
@@ -305,7 +381,7 @@ export default function App() {
       );
     } catch (error) { showError(error); }
   };
-  const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);changed();}catch(e){showError(e);}}}]);
+  const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{if(table==='savingsGoals'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM savingsEntries WHERE goalId=?',id);await db.runAsync('DELETE FROM savingsGoals WHERE id=?',id);});}else{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);}changed();}catch(e){showError(e);}}}]);
   const toggleTask = async (task) => { await db.runAsync('UPDATE tasks SET completed=?,updatedAt=? WHERE id=?',task.completed?0:1,new Date().toISOString(),task.id); changed(); };
 
   const renderHome = () => <><Heading detail={DAYS[new Date().getDay()]+' · '+todayKey()}>{data.profile.displayName ? 'Welcome back, '+data.profile.displayName : 'Your day, organized.'}</Heading>
@@ -323,15 +399,141 @@ export default function App() {
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Subjects</Text>{data.subjects.map(x=><Item key={x.id} title={x.code+' — '+x.name} detail={x.professor||'Professor not set'}/>)}</Card>
   </>;
 
-  const renderBudget = () => <><Heading detail="All amounts are stored as integer centavos.">Budget</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Available balance</Text><Text style={[styles.balance,{color:ACTIVE_COLORS.forest}]}>{peso(availableBalance)}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Active allowance + income − expenses</Text></Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add an expense</Text><Field label="Description" value={form.description||''} onChangeText={v=>updateForm('description',v)}/><Field label="Amount (₱)" value={form.amount||''} onChangeText={v=>updateForm('amount',v)} keyboardType="decimal-pad"/><Field label="Category" value={form.category||'Food'} onChangeText={v=>updateForm('category',v)}/><Button title="Save expense" onPress={addExpense}/></Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add allowance</Text><Field label="Amount (₱)" value={form.allowanceAmount||''} onChangeText={v=>updateForm('allowanceAmount',v)} keyboardType="decimal-pad"/><Field label="Period (daily / weekly / monthly)" value={form.allowancePeriod||'weekly'} onChangeText={v=>updateForm('allowancePeriod',v)}/><Button title="Save allowance" onPress={addAllowance}/></Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add income</Text><Field label="Source" value={form.source||''} onChangeText={v=>updateForm('source',v)}/><Field label="Amount (₱)" value={form.incomeAmount||''} onChangeText={v=>updateForm('incomeAmount',v)} keyboardType="decimal-pad"/><Button title="Save income" onPress={addIncome}/></Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Allowances</Text>{data.allowances.map(x=><Item key={x.id} title={peso(x.amount)+' · '+x.period} detail={x.startDate+' to '+x.endDate} onDelete={()=>remove('allowances',x.id)}/>)}{!data.allowances.length?<Empty text="No allowance periods recorded."/>:null}</Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Expenses</Text>{data.expenses.map(x=><Item key={x.id} title={x.description} detail={x.date} trailing={'−'+peso(x.amount)} onDelete={()=>remove('expenses',x.id)}/>) }{!data.expenses.length?<Empty text="No expenses recorded yet."/>:null}</Card>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Income</Text>{data.income.map(x=><Item key={x.id} title={x.source} detail={x.date} trailing={'+'+peso(x.amount)} onDelete={()=>remove('income',x.id)}/>) }{!data.income.length?<Empty text="No income recorded yet."/>:null}</Card>
-  </>;
+  const renderBudget = () => {
+    const currentDate = todayKey();
+    const totals = calculateFinanceSummary(data, currentDate);
+    const report = summarizeBudgetTransactions(data.income, data.expenses, reportPeriod, new Date());
+    const activeLimits = data.categoryBudgets.filter(item => item.startDate <= currentDate && item.endDate >= currentDate);
+    const actions = [
+      { id: 'expense', label: 'Expense' },
+      { id: 'income', label: 'Income' },
+      { id: 'allowance', label: 'Allowance' },
+      { id: 'goal', label: 'Savings goal' },
+      { id: 'saving', label: 'Savings activity' },
+      { id: 'limit', label: 'Category limit' },
+    ];
+    return <>
+      <Heading detail="Allowance, spending, and savings · stored locally">Budget</Heading>
+      <View style={styles.stats}>
+        <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>AVAILABLE BALANCE</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(totals.availableBalance)}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Active allowance + income − expenses</Text></Card>
+        <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>ALLOWANCE TODAY</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(totals.allowanceTotal)}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Current allowance periods</Text></Card>
+        <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>TOTAL INCOME</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(totals.incomeTotal)}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>All recorded income</Text></Card>
+        <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>TOTAL EXPENSES</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(totals.expenseTotal)}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>All recorded expenses</Text></Card>
+      </View>
 
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a record</Text>
+        <View style={styles.budgetActionRow}>
+          {actions.map(action => <Button key={action.id} compact secondary={form.budgetAction!==action.id} title={action.label} onPress={()=>updateForm('budgetAction',action.id)}/>)}
+        </View>
+        {(!form.budgetAction || form.budgetAction==='expense') && <>
+          <Field label="What did you spend on?" value={form.description||''} onChangeText={v=>updateForm('description',v)} placeholder="Lunch, fare, school supplies…"/>
+          <Field label="Amount (₱)" value={form.amount||''} onChangeText={v=>updateForm('amount',v)} keyboardType="decimal-pad"/>
+          <Field label="Expense category" value={form.category||'Food'} onChangeText={v=>updateForm('category',v)} placeholder="Food, Transportation, School…"/>
+          <Field label="Date (YYYY-MM-DD)" value={form.expenseDate||currentDate} onChangeText={v=>updateForm('expenseDate',v)} placeholder={currentDate}/>
+          <Button title="Save expense" onPress={addExpense}/>
+        </>}
+        {form.budgetAction==='income' && <>
+          <Field label="Income source" value={form.source||''} onChangeText={v=>updateForm('source',v)} placeholder="Allowance, part-time work…"/>
+          <Field label="Amount (₱)" value={form.incomeAmount||''} onChangeText={v=>updateForm('incomeAmount',v)} keyboardType="decimal-pad"/>
+          <Field label="Date (YYYY-MM-DD)" value={form.incomeDate||currentDate} onChangeText={v=>updateForm('incomeDate',v)} placeholder={currentDate}/>
+          <Button title="Add income" onPress={addIncome}/>
+        </>}
+        {form.budgetAction==='allowance' && <>
+          <Field label="Amount (₱)" value={form.allowanceAmount||''} onChangeText={v=>updateForm('allowanceAmount',v)} keyboardType="decimal-pad"/>
+          <Field label="Period (daily / weekly / monthly)" value={form.allowancePeriod||'weekly'} onChangeText={v=>updateForm('allowancePeriod',v)} placeholder="weekly"/>
+          <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Weekly allowance runs Monday to Sunday. Monthly allowance follows the calendar month.</Text>
+          <Button title="Save allowance" onPress={addAllowance}/>
+        </>}
+        {form.budgetAction==='goal' && <>
+          <Field label="Savings goal name" value={form.goalTitle||''} onChangeText={v=>updateForm('goalTitle',v)} placeholder="New laptop, emergency fund…"/>
+          <Field label="Target amount (₱)" value={form.goalTargetAmount||''} onChangeText={v=>updateForm('goalTargetAmount',v)} keyboardType="decimal-pad"/>
+          <Button title="Create savings goal" onPress={addSavingsGoal}/>
+        </>}
+        {form.budgetAction==='saving' && <>
+          <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Savings goal</Text>
+          {data.goals.length ? <View style={styles.budgetActionRow}>{data.goals.map(goal=><Button key={goal.id} compact secondary={String(goal.id)!==String(form.savingGoalId||'')} title={goal.title} onPress={()=>updateForm('savingGoalId',String(goal.id))}/>)}</View> : <Empty text="Create a savings goal before recording deposits or withdrawals."/>}
+          <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Savings action</Text>
+          <View style={styles.budgetActionRow}>
+            <Button compact secondary={(form.savingType||'deposit')!=='deposit'} title="Deposit" onPress={()=>updateForm('savingType','deposit')}/>
+            <Button compact secondary={form.savingType!=='withdrawal'} title="Withdraw" onPress={()=>updateForm('savingType','withdrawal')}/>
+          </View>
+          <Field label="Amount (₱)" value={form.savingAmount||''} onChangeText={v=>updateForm('savingAmount',v)} keyboardType="decimal-pad"/>
+          <Field label="Date (YYYY-MM-DD)" value={form.savingDate||currentDate} onChangeText={v=>updateForm('savingDate',v)} placeholder={currentDate}/>
+          <Button title="Save savings activity" onPress={addSavingsEntry} />
+        </>}
+        {form.budgetAction==='limit' && <>
+          <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Expense category</Text>
+          {data.categories.length ? <View style={styles.budgetActionRow}>{data.categories.map(category=><Button key={category.id} compact secondary={String(category.id)!==String(form.limitCategoryId||'')} title={category.name} onPress={()=>updateForm('limitCategoryId',String(category.id))}/>)}</View> : <Empty text="Create an expense category first by saving an expense."/>}
+          <Field label="Spending limit (₱)" value={form.limitAmount||''} onChangeText={v=>updateForm('limitAmount',v)} keyboardType="decimal-pad"/>
+          <Field label="Period (daily / weekly / monthly)" value={form.limitPeriod||'weekly'} onChangeText={v=>updateForm('limitPeriod',v)} placeholder="weekly"/>
+          <Button title="Save category limit" onPress={addCategoryLimit}/>
+        </>}
+      </Card>
+
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Category spending limits</Text>
+        {activeLimits.length ? activeLimits.map(limit=>{
+          const category=data.categories.find(item=>item.id===limit.categoryId);
+          if(!category)return null;
+          const usage=calculateCategoryUsage(limit.amount,data.expenses.filter(item=>item.categoryId===limit.categoryId&&item.date>=limit.startDate&&item.date<=limit.endDate));
+          return <View key={limit.id} style={styles.limitRow}>
+            <View style={styles.rowBetween}>
+              <View style={styles.itemText}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{category.name} · {limit.period}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{peso(usage.spent)} spent of {peso(limit.amount)}</Text></View>
+              <Button compact secondary title="Delete" onPress={()=>remove('categoryBudgets',limit.id)}/>
+            </View>
+            <View style={[styles.progressTrack,{backgroundColor:ACTIVE_COLORS.soft}]}><View style={[styles.progressFill,{width:usage.percent+'%',backgroundColor:usage.exceeded?ACTIVE_COLORS.red:ACTIVE_COLORS.forest}]}/></View>
+            <Text style={[styles.itemDetail,{color:usage.exceeded?ACTIVE_COLORS.red:ACTIVE_COLORS.muted}]}>{usage.exceeded?'Over by '+peso(-usage.remaining):peso(usage.remaining)+' remaining'} · {usage.percent}% used</Text>
+          </View>;
+        }) : <Empty text="No active category limits. Add a limit to monitor spending."/>}
+      </Card>
+
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Savings goals</Text>
+        {data.goals.length ? data.goals.map(goal=>{
+          const saved=Number(goal.savedAmount||0);
+          const percent=goal.targetAmount>0?Math.min(100,Math.round(saved/goal.targetAmount*100)):0;
+          return <View key={goal.id} style={styles.goalRow}>
+            <View style={styles.rowBetween}>
+              <View style={styles.itemText}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{goal.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{peso(saved)} saved of {peso(goal.targetAmount)}</Text></View>
+              <Button compact secondary title="Delete" onPress={()=>remove('savingsGoals',goal.id)}/>
+            </View>
+            <View style={[styles.progressTrack,{backgroundColor:ACTIVE_COLORS.soft}]}><View style={[styles.progressFill,{width:percent+'%',backgroundColor:ACTIVE_COLORS.forest}]}/></View>
+            <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{percent}% saved</Text>
+          </View>;
+        }) : <Empty text="Create a goal to track your savings progress."/>}
+        <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Recent savings activity</Text>
+        {data.savingsEntries.slice(0,6).map(entry=>{
+          const goal=data.goals.find(item=>item.id===entry.goalId);
+          return <Item key={entry.id} title={(entry.type==='withdrawal'?'−':' +').trim()+peso(entry.amount)+' · '+(goal?.title||'Savings goal')} detail={entry.date} trailing={entry.type==='withdrawal'?'Withdrawn':'Deposited'}/>;
+        })}
+        {!data.savingsEntries.length?<Empty text="No deposits or withdrawals yet."/>:null}
+      </Card>
+
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Money report</Text>
+        <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{report.label}{report.startDate?' · '+report.startDate+' to '+report.endDate:' · all recorded dates'}</Text>
+        <View style={styles.budgetActionRow}>
+          {['today','week','month','all'].map(period=><Button key={period} compact secondary={reportPeriod!==period} title={period==='all'?'All time':period==='week'?'Week':period==='month'?'Month':'Today'} onPress={()=>setReportPeriod(period)}/>)}
+        </View>
+        <View style={styles.stats}>
+          <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>INCOME</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.forest}]}>{peso(report.incomeTotal)}</Text></Card>
+          <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>EXPENSES</Text><Text style={[styles.statValue,{color:ACTIVE_COLORS.ink}]}>{peso(report.expenseTotal)}</Text></Card>
+          <Card style={styles.stat}><Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>NET</Text><Text style={[styles.statValue,{color:report.net>=0?ACTIVE_COLORS.forest:ACTIVE_COLORS.red}]}>{peso(report.net)}</Text></Card>
+        </View>
+        <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{report.transactionCount} transaction{report.transactionCount===1?'':'s'} in this range</Text>
+        {report.transactions.slice(0,12).map(item=><Item key={item.table+'-'+item.id} title={item.label} detail={item.kind+' · '+item.date} trailing={(item.sign>0?'+':'−')+peso(item.amount)} onDelete={()=>remove(item.table,item.id)}/>)}
+        {!report.transactionCount?<Empty text="No income or expenses in this date range."/>:null}
+        {report.transactionCount>12?<Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Showing the latest 12 of {report.transactionCount} transactions.</Text>:null}
+      </Card>
+
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Allowances</Text>
+        {data.allowances.map(item=><Item key={item.id} title={peso(item.amount)+' · '+item.period} detail={item.startDate+' to '+item.endDate} onDelete={()=>remove('allowances',item.id)}/>)}
+        {!data.allowances.length?<Empty text="No allowance periods recorded."/>:null}
+      </Card>
+    </>;
+  };
   const renderNotes = () => <><Heading detail="Personal, lecture, and subject notes stored locally.">Notepad</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>New note</Text><Field label="Title" value={form.noteTitle||''} onChangeText={v=>updateForm('noteTitle',v)}/><Field label="Content" value={form.noteContent||''} onChangeText={v=>updateForm('noteContent',v)} multiline/><Field label="Type (personal / lecture / subject)" value={form.noteKind||'personal'} onChangeText={v=>updateForm('noteKind',v)}/><Button title="Save note" onPress={addNote}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Saved notes</Text>{data.notes.map(x=><Item key={x.id} title={(x.pinned?'★ ':'')+x.title} detail={x.kind+' · '+(x.updatedAt||'').slice(0,10)} onDelete={()=>remove('notes',x.id)}/>) }{!data.notes.length?<Empty text="No notes saved yet."/>:null}</Card></>;
 
   const renderTasks = () => <><Heading detail="Assignments, deadlines, and priorities.">Tasks</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a task</Text><Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)}/><Field label="Due date (YYYY-MM-DD, optional)" value={form.dueDate||''} onChangeText={v=>updateForm('dueDate',v)}/><Field label="Priority (Low / Normal / High)" value={form.priority||'Normal'} onChangeText={v=>updateForm('priority',v)}/><Button title="Add task" onPress={addTask}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Your tasks</Text>{data.tasks.map(x=><View key={x.id} style={styles.taskRow}><Pressable onPress={()=>toggleTask(x)} style={[styles.check,x.completed&&styles.checked,x.completed&&{backgroundColor:ACTIVE_COLORS.forest,borderColor:ACTIVE_COLORS.forest}]}><Text style={styles.checkText}>{x.completed?'✓':''}</Text></Pressable><View style={styles.itemText}><Text style={[styles.itemTitle,x.completed&&styles.done]}>{x.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{x.dueDate?'Due '+x.dueDate:'No due date'} · {x.priority}</Text></View><Pressable onPress={()=>remove('tasks',x.id)}><Trash2 size={17} color={ACTIVE_COLORS.red}/></Pressable></View>)}{!data.tasks.length?<Empty text="No tasks yet."/>:null}</Card></>;
@@ -427,5 +629,6 @@ const styles=StyleSheet.create({
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
   modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
   themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
+  budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},
   item:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed',gap:9},itemText:{flex:1},itemTitle:{fontSize:14,fontWeight:'700',color:COLORS.ink},itemDetail:{fontSize:11,color:COLORS.muted,marginTop:3},trailing:{fontSize:12,fontWeight:'800',color:COLORS.forest},delete:{padding:5},empty:{fontSize:12,color:COLORS.muted,paddingVertical:12},taskRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed'},check:{width:23,height:23,borderWidth:1.5,borderColor:'#b8c7bd',borderRadius:7,alignItems:'center',justifyContent:'center'},checked:{backgroundColor:COLORS.forest,borderColor:COLORS.forest},checkText:{color:'#fff',fontWeight:'900'},done:{textDecorationLine:'line-through',color:'#9aa39b'},switchRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:7},nav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:7,paddingBottom:Platform.OS==='android'?7:3,paddingHorizontal:2},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3,paddingVertical:4,borderRadius:10},navActive:{backgroundColor:'#edf4ef'},navLabel:{fontSize:9,color:'#89948c',fontWeight:'600'},navLabelActive:{color:COLORS.forest,fontWeight:'900'}
 });
