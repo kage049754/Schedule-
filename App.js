@@ -7,6 +7,7 @@ import * as Notifications from 'expo-notifications';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { CalendarDays, Wallet, NotebookPen, CheckSquare, LayoutDashboard, Settings, Trash2, GraduationCap, Bell, Plus } from 'lucide-react-native';
 import { getDatabase, getSetting, setSetting } from './src-native/database';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, calculateAvailableBalance } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 const TABS = [
@@ -96,10 +97,7 @@ export default function App() {
 
   const availableBalance = useMemo(() => {
     const today = todayKey();
-    const activeAllowance = data.allowances.filter(x => x.startDate <= today && x.endDate >= today).reduce((s,x)=>s+x.amount,0);
-    const income = data.income.filter(x=>x.date<=today).reduce((s,x)=>s+x.amount,0);
-    const expenses = data.expenses.filter(x=>x.date<=today).reduce((s,x)=>s+x.amount,0);
-    return activeAllowance + income - expenses;
+    return calculateAvailableBalance(data, today);
   }, [data]);
   const savingsTotal = useMemo(() => data.goals.reduce((sum,goal)=>sum+Number(goal.savedAmount||0),0), [data]);
 
