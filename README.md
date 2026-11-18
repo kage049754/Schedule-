@@ -92,7 +92,7 @@ For each phase: inspect current code → implement a bounded feature → run che
 Do not mark a phase complete because code was merely written. Build/test evidence is required. Physical-device testing is separate from CI/emulator checks. Before each milestone, inspect the current repo, research relevant documentation/projects, and use available code-review/testing tools or skills where applicable. Keep the project strictly offline: no backend, accounts, cloud sync, or runtime network dependency.
 
 ## Cross-module synchronization
-All modules read and write the same local Dexie database. Live queries update related screens without a manual refresh or internet connection. Budget entries update Dashboard balance and recent activity; schedule, subject, activity, and task changes refresh the timetable, Dashboard, reminders, and widget snapshot where relevant. Deleting a subject preserves its notes and tasks by unlinking them.
+On `main`, the original web app uses Dexie live queries. On `react-native-migration`, native screens share the local SQLite database and refresh after writes/tab changes; full automatic cross-module refresh is still being ported. No network is required. Budget entries are intended to update Dashboard balance/activity, and schedule/task changes update timetable and local reminders. The native widget and legacy-data import are not yet ported.
 
 ## React Native migration status
 
