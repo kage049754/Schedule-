@@ -1,22 +1,22 @@
-name: Build Schedule
+name: Build Schedule React Native
 
 on:
   push:
-    branches: [main]
+    branches: [main, react-native-migration]
   pull_request:
     branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: schedule-${{ github.workflow }}-${{ github.ref }}
+  group: schedule-native-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  web-build:
-    name: Install and build React app
+  android:
+    name: React Native Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,43 +24,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - name: Install dependencies
-        run: npm install
-      - name: Run unit tests
-        run: npm test
-      - name: Report dependency audit
-        run: |
-          npm audit --json > npm-audit.json || true
-          node -e "const a=require('./npm-audit.json'); console.log(JSON.stringify({metadata:a.metadata?.vulnerabilities, packages:Object.entries(a.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fixAvailable:v.fixAvailable}))}, null, 2))"
-      - name: Build production bundle
-        run: npm run build
-      - name: Verify output
-        run: test -s dist/index.html
-      - name: Upload web build
-        uses: actions/upload-artifact@v4
-        with:
-          name: schedule-web-build
-          path: dist/
-          if-no-files-found: error
-      - name: Upload dependency audit report
-        uses: actions/upload-artifact@v4
-        with:
-          name: schedule-dependency-audit
-          path: npm-audit.json
-          if-no-files-found: error
-
-  android-apk:
-    name: Build Android debug APK
-    runs-on: ubuntu-latest
-    needs: web-build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+          node-version: '22.13'
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -69,106 +33,37 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-      - name: Install dependencies
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+      - name: Install JavaScript dependencies
         run: npm install
-      - name: Build web assets
-        run: npm run build
-      - name: Generate Capacitor Android project
-        run: npx cap add android
-      - name: Sync native plugins
-        run: npx cap sync android
-      - name: Add Android reminder permissions
+      - name: Generate bundled notification sound
+        run: node scripts/generate-chime.mjs
+      - name: Validate Expo and React Native dependency compatibility
         run: |
-          node <<'NODE'
-          const fs = require('node:fs')
-          const file = 'android/app/src/main/AndroidManifest.xml'
-          let xml = fs.readFileSync(file, 'utf8')
-          const permissions = [
-            'android.permission.POST_NOTIFICATIONS',
-            'android.permission.SCHEDULE_EXACT_ALARM',
-            'android.permission.VIBRATE'
-          ]
-          for (const permission of permissions) {
-            const tag = `<uses-permission android:name="${permission}" />`
-            if (!xml.includes(permission)) xml = xml.replace(/<application\b/, `${tag}\n    <application`)
-          }
-          fs.writeFileSync(file, xml)
-          NODE
-      - name: Install native home-screen widget
-        run: |
-          mkdir -p android/app/src/main/java/com/schedule/studentplanner
-          mkdir -p android/app/src/main/res/layout android/app/src/main/res/xml android/app/src/main/res/values android/app/src/main/res/raw
-          node <<'NODE'
-          const fs = require('node:fs')
-          const sampleRate = 22050
-          const notes = [{ hz: 659.25, duration: 0.22 }, { hz: 783.99, duration: 0.24 }, { hz: 987.77, duration: 0.42 }]
-          const samples = []
-          for (const note of notes) {
-            const count = Math.floor(sampleRate * note.duration)
-            for (let i = 0; i < count; i++) {
-              const attack = Math.min(1, i / (sampleRate * 0.012))
-              const release = Math.min(1, (count - i) / (sampleRate * 0.07))
-              const envelope = Math.min(attack, release) * 0.22
-              const fundamental = Math.sin(2 * Math.PI * note.hz * i / sampleRate)
-              const overtone = 0.22 * Math.sin(2 * Math.PI * note.hz * 2 * i / sampleRate)
-              samples.push(Math.max(-1, Math.min(1, (fundamental + overtone) * envelope)))
-            }
-          }
-          const data = Buffer.alloc(samples.length * 2)
-          samples.forEach((sample, index) => data.writeInt16LE(Math.round(sample * 32767), index * 2))
-          const header = Buffer.alloc(44)
-          header.write('RIFF', 0); header.writeUInt32LE(36 + data.length, 4); header.write('WAVE', 8)
-          header.write('fmt ', 12); header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20)
-          header.writeUInt16LE(1, 22); header.writeUInt32LE(sampleRate, 24); header.writeUInt32LE(sampleRate * 2, 28)
-          header.writeUInt16LE(2, 32); header.writeUInt16LE(16, 34); header.write('data', 36); header.writeUInt32LE(data.length, 40)
-          fs.writeFileSync('android/app/src/main/res/raw/schedule_chime.wav', Buffer.concat([header, data]))
-          NODE
-          cp native/android/src/main/java/com/schedule/studentplanner/MainActivity.java android/app/src/main/java/com/schedule/studentplanner/MainActivity.java
-          cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetPlugin.java
-          cp native/android/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java android/app/src/main/java/com/schedule/studentplanner/ScheduleWidgetProvider.java
-          cp native/android/src/main/res/layout/schedule_widget.xml android/app/src/main/res/layout/schedule_widget.xml
-          cp native/android/src/main/res/xml/schedule_widget_info.xml android/app/src/main/res/xml/schedule_widget_info.xml
-          cp native/android/src/main/res/values/schedule_widget_strings.xml android/app/src/main/res/values/schedule_widget_strings.xml
-          node <<'NODE'
-          const fs = require('node:fs')
-          const file = 'android/app/src/main/AndroidManifest.xml'
-          let xml = fs.readFileSync(file, 'utf8')
-          const receiver = `
-              <receiver
-                  android:name=".ScheduleWidgetProvider"
-                  android:exported="true">
-                  <intent-filter>
-                      <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                  </intent-filter>
-                  <meta-data
-                      android:name="android.appwidget.provider"
-                      android:resource="@xml/schedule_widget_info" />
-              </receiver>
-          `
-          if (!xml.includes('ScheduleWidgetProvider')) xml = xml.replace('</application>', `${receiver}\n</application>`)
-          fs.writeFileSync(file, xml)
-          NODE
-          grep -q 'ScheduleWidgetProvider' android/app/src/main/AndroidManifest.xml
-          grep -q 'schedule_widget_info' android/app/src/main/AndroidManifest.xml
-          grep -q 'registerPlugin(ScheduleWidgetPlugin.class)' android/app/src/main/java/com/schedule/studentplanner/MainActivity.java
+          npx expo install --fix
+          npx expo-doctor
+      - name: Run native domain tests
+        run: node --test tests/native-domain.test.js
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --clean
       - name: Build debug APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
-      - name: Verify APK and notification reboot receiver
+      - name: Verify React Native APK
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
-          $ANDROID_HOME/build-tools/35.0.0/aapt dump xmltree "$APK" AndroidManifest.xml > /tmp/schedule-manifest.txt
-          grep -q 'LocalNotificationRestoreReceiver' /tmp/schedule-manifest.txt
-          grep -q 'RECEIVE_BOOT_COMPLETED' /tmp/schedule-manifest.txt
-          test -s android/app/src/main/res/raw/schedule_chime.wav
-          file android/app/src/main/res/raw/schedule_chime.wav
-      - name: Upload Android APK
+          $ANDROID_HOME/build-tools/36.0.0/aapt dump badging "$APK" | grep -q "package: name='com.schedule.studentplanner'"
+          $ANDROID_HOME/build-tools/36.0.0/aapt dump xmltree "$APK" AndroidManifest.xml > /tmp/schedule-native-manifest.txt
+          grep -q 'RECEIVE_BOOT_COMPLETED' /tmp/schedule-native-manifest.txt
+          test -s assets/schedule_chime.wav
+          file assets/schedule_chime.wav
+          sha256sum "$APK"
+      - name: Upload React Native APK
         uses: actions/upload-artifact@v4
         with:
-          name: schedule-debug-apk
+          name: schedule-react-native-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
