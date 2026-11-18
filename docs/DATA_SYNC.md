@@ -48,9 +48,13 @@ The React Native shell currently refreshes its shared screen data after successf
 - Android notification permission is required for visible alerts. A notification's snooze action schedules a separate one-time reminder 10 minutes later; dismiss removes that delivered alert only. Exact-alarm access, battery restrictions, Do Not Disturb, manufacturer background limits, and reboot behavior can affect delivery. The app must communicate these limitations instead of claiming guaranteed delivery.
 - Reminder settings are local to this installation. Backup/restore is the supported way to move records/preferences to another device; each device schedules its own Android alerts.
 
+## Appearance preferences
+
+The selected light color combination is stored in the local SQLite settings table. Forest is the default. The React Native migration includes Forest, Ocean, Sunset, Lavender, Rose, and Monochrome palettes. A palette defines the primary and secondary accents, page and card surfaces, text, muted text, border, and soft control/background colors. Changing the palette applies immediately to the app shell and shared form/card/navigation components. This is local presentation state and is included in the ordinary app backup/settings export.
+
 ## Widget contract
 
-The Android home-screen widget reads a compact snapshot from local Android SharedPreferences, written by the Capacitor bridge from Dexie data. It displays the next upcoming class (subject, start time, room, countdown) and nearest incomplete task deadline, including overdue tasks marked as overdue. The app pushes updates after schedule/activity/subject/task changes and every minute while open; Android's widget update period refreshes it every 30 minutes while the app is closed. Tapping opens the Schedule app. It does not depend on a network service.
+On the React Native migration branch, the native widget reads a compact snapshot from local Android SharedPreferences written by the React Native bridge after SQLite data is refreshed. It displays the next upcoming class (subject, room/type details, and countdown) plus the nearest unfinished task deadline. The Android AppWidgetProvider restores its last saved snapshot after boot and the widget provider requests a periodic update every 30 minutes. Tapping the widget opens Schedule. It does not depend on a network service. CI Run #254 verified native provider/resource registration and APK packaging; physical launcher placement and live refresh still require device QA.
 
 ## Verification requirements
 

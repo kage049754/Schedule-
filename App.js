@@ -25,7 +25,7 @@ import { normalizeNavigationPreferences } from './src-native/navigation';
 import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks, findNextNativeClass, findNearestNativeTask } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
-let ACTIVE_COLORS = COLORS;
+const ThemeContext = React.createContext(COLORS);
 const TABS = [
   { id: 'home', label: 'Home', Icon: LayoutDashboard },
   { id: 'schedule', label: 'Schedule', Icon: CalendarDays },
@@ -47,18 +47,30 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false })
 });
 
-function Card({ children, style }) { return <View style={[styles.card, { backgroundColor: ACTIVE_COLORS.white, borderColor: ACTIVE_COLORS.line }, style]}>{children}</View>; }
-function Heading({ children, detail }) { return <View style={styles.heading}><Text style={[styles.h1, { color: ACTIVE_COLORS.ink }]}>{children}</Text>{detail ? <Text style={[styles.sub, { color: ACTIVE_COLORS.muted }]}>{detail}</Text> : null}</View>; }
+function Card({ children, style }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
+  return <View style={[styles.card, { backgroundColor: ACTIVE_COLORS.white, borderColor: ACTIVE_COLORS.line }, style]}>{children}</View>;
+}
+function Heading({ children, detail }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
+  return <View style={styles.heading}><Text style={[styles.h1, { color: ACTIVE_COLORS.ink }]}>{children}</Text>{detail ? <Text style={[styles.sub, { color: ACTIVE_COLORS.muted }]}>{detail}</Text> : null}</View>;
+}
 function Field({ label, value, onChangeText, placeholder, multiline, keyboardType, style }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
   return <View style={styles.field}><Text style={[styles.label, { color: ACTIVE_COLORS.muted }]}>{label}</Text><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder || label} placeholderTextColor={ACTIVE_COLORS.muted} keyboardType={keyboardType || 'default'} multiline={multiline} style={[styles.input, { color: ACTIVE_COLORS.ink, backgroundColor: ACTIVE_COLORS.white, borderColor: ACTIVE_COLORS.line }, multiline && styles.multiline, style]} /></View>;
 }
 function Button({ title, onPress, secondary, danger, compact }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
   return <Pressable onPress={onPress} style={[styles.button, { backgroundColor: ACTIVE_COLORS.forest }, secondary && [styles.buttonSecondary, { backgroundColor: ACTIVE_COLORS.soft, borderColor: ACTIVE_COLORS.line }], danger && styles.buttonDanger, compact && styles.buttonCompact]}><Text style={[styles.buttonText, secondary && [styles.buttonSecondaryText, { color: ACTIVE_COLORS.forest }], danger && styles.buttonDangerText]}>{title}</Text></Pressable>;
 }
 function Item({ title, detail, trailing, onDelete, onPress }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
   return <Pressable onPress={onPress} style={[styles.item,{borderTopColor:ACTIVE_COLORS.line}]}><View style={styles.itemText}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{title}</Text>{detail ? <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{detail}</Text> : null}</View>{trailing ? <Text style={[styles.trailing,{color:ACTIVE_COLORS.forest}]}>{trailing}</Text> : null}{onDelete ? <Pressable hitSlop={10} onPress={onDelete} style={styles.delete}><Trash2 size={17} color={ACTIVE_COLORS.red}/></Pressable> : null}</Pressable>;
 }
-function Empty({ text }) { return <Text style={[styles.empty, { color: ACTIVE_COLORS.muted }]}>{text}</Text>; }
+function Empty({ text }) {
+  const ACTIVE_COLORS = React.useContext(ThemeContext);
+  return <Text style={[styles.empty, { color: ACTIVE_COLORS.muted }]}>{text}</Text>;
+}
 
 export default function App() {
   const [tab, setTab] = useState('home');
@@ -82,7 +94,7 @@ export default function App() {
   const [taskSearch, setTaskSearch] = useState('');
   const [taskView, setTaskView] = useState('pending');
   const [expandedTaskId, setExpandedTaskId] = useState(null);
-  ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
+  const ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
 
   const refreshData = async (database = db) => {
     if (!database) return;
@@ -823,11 +835,13 @@ export default function App() {
   const resetNavigationPreferences = () => saveNavigationPreferences(TABS.map(item => item.id), []);
 
   const renderSettings = () => <><Heading detail="Personalize your planner and manage local data.">Settings</Heading>
-    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Appearance</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Choose the CampusOS-style color theme. Your choice is saved on this device and applied throughout the app.</Text>
-      <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Light appearance only. Forest is the default CampusOS-inspired theme; choose Sunset or Monochrome to change the accent palette.</Text>
-      {Object.entries(THEMES).map(([id, theme])=><Pressable key={id} accessibilityRole="radio" accessibilityLabel={theme.label+" appearance theme"} accessibilityState={{selected:appearance===id}} onPress={()=>saveAppearancePreference(id)} style={[styles.themeOption,{borderColor:appearance===id?theme.forest:theme.line,backgroundColor:theme.cream}]}>
-        <View style={styles.themeSwatches}><View style={[styles.themeSwatch,{backgroundColor:theme.forest}]}/><View style={[styles.themeSwatch,{backgroundColor:theme.white,borderColor:theme.line,borderWidth:1}]}/><View style={[styles.themeSwatch,{backgroundColor:theme.soft}]}/></View>
-        <View style={styles.itemText}><Text style={[styles.itemTitle,{color:theme.ink}]}>{theme.label}</Text><Text style={[styles.itemDetail,{color:theme.muted}]}>{theme.description}</Text></View>
+    <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Appearance</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Choose a CampusOS-style color combination. Each palette changes the app accent, page background, cards, borders, buttons, and navigation. Your selection is saved on this device and applied immediately.</Text>
+      <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Color combinations · Light appearance</Text>
+      {Object.entries(THEMES).map(([id, theme])=><Pressable key={id} accessibilityRole="radio" accessibilityLabel={theme.label+" color combination"} accessibilityState={{selected:appearance===id}} onPress={()=>saveAppearancePreference(id)} style={[styles.themeOption,{borderColor:appearance===id?theme.forest:theme.line,backgroundColor:theme.cream,borderWidth:appearance===id?2:1}]}>
+        <View style={styles.themeSwatches}>
+          {[theme.forest,theme.forest2,theme.cream,theme.white,theme.soft].map((color,index)=><View key={index} style={[styles.themeSwatch,{backgroundColor:color,borderColor:theme.line,borderWidth:index===2||index===3?1:0}]}/>)}
+        </View>
+        <View style={styles.itemText}><Text style={[styles.itemTitle,{color:theme.ink}]}>{theme.label}{appearance===id?' · Selected':''}</Text><Text style={[styles.itemDetail,{color:theme.muted}]}>{theme.description}</Text></View>
         <View style={[styles.themeRadio,{borderColor:theme.forest}]}>{appearance===id?<View style={[styles.themeRadioSelected,{backgroundColor:theme.forest}]}/>:null}</View>
       </Pressable>)}
       <Button title="Reset appearance to Forest" secondary onPress={()=>saveAppearancePreference('forest')}/>
@@ -861,16 +875,16 @@ export default function App() {
     <Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Local profile</Text><Field label="Display name" value={form.displayName??data.profile.displayName??''} onChangeText={v=>updateForm('displayName',v)}/><Field label="Program" value={form.program??data.profile.program??''} onChangeText={v=>updateForm('program',v)}/><Field label="Year and section" value={form.yearSection??data.profile.yearSection??''} onChangeText={v=>updateForm('yearSection',v)}/><Button title="Save profile" onPress={saveProfile}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Reminders</Text><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Enable local reminders</Text><Switch value={remindersEnabled} onValueChange={async value=>{setRemindersEnabled(value);await setSetting('remindersEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Field label="Class reminder lead time (minutes)" value={leadMinutes} onChangeText={async value=>{setLeadMinutes(value);await setSetting('leadMinutes',value);}} keyboardType="number-pad"/><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Chime sound</Text><Switch value={soundEnabled} onValueChange={async value=>{setSoundEnabled(value);await setSetting('soundEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><View style={styles.switchRow}><Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>Vibration</Text><Switch value={vibrationEnabled} onValueChange={async value=>{setVibrationEnabled(value);await setSetting('vibrationEnabled',value);}} trackColor={{true:ACTIVE_COLORS.forest2}}/></View><Button title="Request notification permission" secondary onPress={async()=>{const result=await Notifications.requestPermissionsAsync();Alert.alert('Notifications',result.granted?'Permission granted.':'Permission not granted.');}}/><Button title="Send test notification" secondary onPress={async()=>{const permission=await Notifications.requestPermissionsAsync();if(!permission.granted){Alert.alert('Permission required','Allow notifications in Android settings first.');return;}await Notifications.scheduleNotificationAsync({content:{title:'Schedule reminder test',body:'Your local notifications are working.',sound:soundEnabled?'schedule_chime.wav':null},trigger:null});Alert.alert('Sent','A local test notification was requested.');}}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Backup and restore</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Export a portable Schedule JSON backup or import a backup from the previous Capacitor app. Import replaces all local records on this device.</Text><Button title="Export local backup" onPress={exportBackup}/><Button title="Import JSON backup" secondary onPress={importBackup}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Privacy and local storage</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Your schedule, budget, notes, tasks, profile, appearance, and navigation preferences stay in the local SQLite database on this device. The planner does not require an account, backend, or cloud database.</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Database: schedule-local.db. Export a JSON backup before uninstalling the app or clearing its storage. Restoring a backup replaces current local records.</Text><Button title="Refresh local data" secondary onPress={changed}/></Card></>;
 
   const screen = {home:renderHome,schedule:renderSchedule,budget:renderBudget,notes:renderNotes,tasks:renderTasks,settings:renderSettings}[tab];
-  if (busy) return <SafeAreaView style={styles.loading}><StatusBar barStyle="dark-content" backgroundColor={ACTIVE_COLORS.cream}/><GraduationCap size={34} color={ACTIVE_COLORS.forest}/><Text style={styles.loadingText}>Preparing your local planner…</Text></SafeAreaView>;
+  if (busy) return <ThemeContext.Provider value={ACTIVE_COLORS}><SafeAreaView style={styles.loading}><StatusBar barStyle="dark-content" backgroundColor={ACTIVE_COLORS.cream}/><GraduationCap size={34} color={ACTIVE_COLORS.forest}/><Text style={styles.loadingText}>Preparing your local planner…</Text></SafeAreaView></ThemeContext.Provider>;
 
-  return <SafeAreaView style={[styles.safe,{backgroundColor:ACTIVE_COLORS.cream}]}>
+  return <ThemeContext.Provider value={ACTIVE_COLORS}><SafeAreaView style={[styles.safe,{backgroundColor:ACTIVE_COLORS.cream}]}>
     <StatusBar barStyle="dark-content" backgroundColor={ACTIVE_COLORS.cream}/>
     <View style={[styles.topbar,{backgroundColor:ACTIVE_COLORS.cream}]}><View style={styles.brand}><View style={[styles.logo,{backgroundColor:ACTIVE_COLORS.forest}]}><GraduationCap size={23} color="#fff"/></View><View><Text style={[styles.brandEyebrow,{color:ACTIVE_COLORS.forest2}]}>STUDENT PLANNER</Text><Text style={[styles.brandName,{color:ACTIVE_COLORS.ink}]}>Schedule</Text></View></View><Pressable onPress={()=>setTab('settings')} style={[styles.settingsIcon,{backgroundColor:ACTIVE_COLORS.white}]}><Settings color={ACTIVE_COLORS.forest} size={21}/></Pressable></View>
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS==='ios'?'padding':undefined}>
       <ScrollView key={tab} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{screen()}</ScrollView>
     </KeyboardAvoidingView>
     <View style={[styles.nav,{backgroundColor:ACTIVE_COLORS.white,borderTopColor:ACTIVE_COLORS.line}]}>{navigationOrder.filter(id=>id==='home'||id==='settings'||!hiddenTabs.includes(id)).map(id=>TABS.find(item=>item.id===id)).filter(Boolean).map(({id,label,Icon})=><Pressable key={id} onPress={()=>{setTab(id);resetForm();}} style={[styles.navItem,tab===id&&styles.navActive,tab===id&&{backgroundColor:ACTIVE_COLORS.soft}]}><Icon size={19} color={tab===id?ACTIVE_COLORS.forest:'#89948c'}/><Text style={[styles.navLabel,tab===id&&styles.navLabelActive,tab===id&&{color:ACTIVE_COLORS.forest}]}>{label}</Text></Pressable>)}</View>
-  </SafeAreaView>;
+  </SafeAreaView></ThemeContext.Provider>;
 }
 
 const styles=StyleSheet.create({
@@ -880,7 +894,7 @@ const styles=StyleSheet.create({
   card:{backgroundColor:COLORS.white,borderRadius:20,padding:16,borderWidth:1,borderColor:COLORS.line,gap:10},cardTitle:{fontSize:16,fontWeight:'800',color:COLORS.ink,marginBottom:3},stats:{flexDirection:'row',flexWrap:'wrap',gap:10},stat:{width:'48%',flexGrow:1,minHeight:90,justifyContent:'center'},statValue:{fontSize:21,fontWeight:'800',color:COLORS.forest,marginTop:8},balance:{fontSize:28,fontWeight:'900',color:COLORS.forest},label:{fontSize:10,fontWeight:'700',letterSpacing:.6,color:COLORS.muted},
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
   modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
-  themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
+  themeOption:{flexDirection:'row',alignItems:'center',gap:10,borderWidth:1.5,borderRadius:15,padding:12,minHeight:76},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:16,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
   budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},noteRow:{gap:9,paddingVertical:11,borderTopWidth:1,borderTopColor:COLORS.line},noteBody:{fontSize:13,lineHeight:20},taskCard:{gap:10,paddingVertical:12,borderTopWidth:1,borderTopColor:COLORS.line},taskDescription:{fontSize:13,lineHeight:19},checklistPanel:{gap:8,paddingLeft:8},checklistRow:{flexDirection:'row',alignItems:'center',gap:8},
   item:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed',gap:9},itemText:{flex:1},itemTitle:{fontSize:14,fontWeight:'700',color:COLORS.ink},itemDetail:{fontSize:11,color:COLORS.muted,marginTop:3},trailing:{fontSize:12,fontWeight:'800',color:COLORS.forest},delete:{padding:5},empty:{fontSize:12,color:COLORS.muted,paddingVertical:12},taskRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed'},check:{width:23,height:23,borderWidth:1.5,borderColor:'#b8c7bd',borderRadius:7,alignItems:'center',justifyContent:'center'},checked:{backgroundColor:COLORS.forest,borderColor:COLORS.forest},checkText:{color:'#fff',fontWeight:'900'},done:{textDecorationLine:'line-through',color:'#9aa39b'},switchRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:7},nav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:7,paddingBottom:Platform.OS==='android'?7:3,paddingHorizontal:2},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3,paddingVertical:4,borderRadius:10},navActive:{backgroundColor:'#edf4ef'},navLabel:{fontSize:9,color:'#89948c',fontWeight:'600'},navLabelActive:{color:COLORS.forest,fontWeight:'900'}
 });

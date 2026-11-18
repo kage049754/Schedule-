@@ -155,3 +155,9 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [x] Added Expo config-plugin wiring for a native Android AppWidgetProvider and React Native bridge.
 - [x] Added SQLite-derived next-class and nearest-unfinished-task widget selection helpers with tests.
 - [ ] Verify widget registration, resource packaging, launcher placement, tap-to-open, and refresh on a physical Android device.
+
+### CampusOS-style color combination selector
+- [x] Expanded the appearance presets to six coordinated light palettes: Forest, Ocean, Sunset, Lavender, Rose, and Monochrome.
+- [x] Added five-color swatch previews and a clearly marked selected palette in Settings; changing a palette updates the app immediately and persists locally.
+- [x] Replaced module-level mutable active-theme state with React context so reusable UI components read the selected palette through React's render tree.
+- [x] Kept Forest as the default palette and retained a one-tap reset to Forest.

@@ -31,7 +31,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 | 8 | Notepad | Personal, lecture, and subject-linked notes | Implemented; search, edit, pin, archive, restore, delete |
 | 9 | Tasks | Assignments, deadlines, priorities, checklists, completion | Implemented; pending, overdue, completed views and checklist CRUD |
 | 10 | Dashboard integration | Live cross-module Dashboard; updates from Dexie records after module changes | Implemented; further reports remain |
-| 11 | Settings | Profile, dashboard customization, modules, appearance, reminders | Planned |
+| 11 | Settings | Local profile, navigation modules, reminders, backup controls, and six selectable CampusOS-style color combinations | Implemented on migration branch; physical-device visual QA pending |
 | 12 | Backup and recovery | Local JSON export/import with validation | Planned |
 | 13 | QA | Offline, persistence, calculation, conflict, date and accessibility checks | Planned |
 | 14 | Android packaging | Capacitor Android project, identity, permissions, icons | CI-generated debug APK builds and artifact verification passed |
@@ -74,7 +74,7 @@ There is **no backend**: no server, account system, cloud database, remote API, 
 - Dashboard shows incomplete work due soonest.
 
 **Settings**
-- Optional local display name and program/year-section; bottom-navigation module visibility and ordering; schedule preferences, budget categories, reminders, appearance, and app information.
+- Optional local display name and program/year-section; bottom-navigation module visibility and ordering; schedule preferences, budget categories, reminders, and six light color combinations (Forest, Ocean, Sunset, Lavender, Rose, Monochrome). Appearance remains light-only and Forest is the default.
 - Users can edit, hide, remove, or replace configurable sections/categories without deleting unrelated records.
 - Language decision remains open.
 
