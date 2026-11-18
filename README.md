@@ -1,22 +1,24 @@
 # Schedule
 
+> **React Native migration in progress.** The `react-native-migration` branch is replacing the original Capacitor web wrapper with native React Native views and SQLite. The `main` branch remains the last known-good Capacitor APK until the native replacement completes.
+
 An offline-first student planner and personal finance Android application.
 
 ## Technology
-- React + JavaScript, Vite, Tailwind CSS
-- Capacitor for Android packaging
-- Dexie.js (IndexedDB) for on-device persistence
-- React Router, Lucide React, Recharts
-- Capacitor Local Notifications
+- React Native + JavaScript, using Expo SDK 58 (React Native 0.88)
+- Native Android packaging through Expo Prebuild + Gradle (no EAS account required)
+- Expo SQLite for on-device relational persistence
+- Lucide React Native for native vector icons
+- Expo Notifications for local Android notifications
 
 ## Offline-only architecture
-There is **no backend**: no server, account system, cloud database, remote API, or synchronization. Core features and user data remain on the device. Internet is only needed to obtain the initial APK or install development dependencies.
+There is **no backend**: no server, account system, cloud database, remote API, or synchronization. Core features and user data remain on the device. Internet is only needed to obtain the APK or install development dependencies. The native migration uses SQLite instead of browser IndexedDB; an import path for existing JSON backups is still required before the migration can replace the stable main branch.
 
 ## Roadmap and module behavior
 
 | Phase | Module | Function / behavior | Status |
 |---|---|---|---|
-| 0 | Foundation | React/Vite/Tailwind/Capacitor setup, scripts, conventions | Complete (CI verified) |
+| 0 | Foundation | Expo + React Native + SQLite Android setup | In progress on `react-native-migration`
 | 1 | Navigation and shell | Responsive app frame, bottom navigation, reusable UI, routes | Initial shell complete; polish pending |
 | 2 | Dashboard | Today's classes, tasks to finish, available money, savings, reminders | Implemented; allowance balance uses active date range |
 | 3 | Schedule | CampusOS-style weekly timetable, subjects, rooms, lecture/lab slots, activities | Timetable, subject/class editing, personal activities, and overlap prevention implemented |
@@ -92,8 +94,11 @@ Do not mark a phase complete because code was merely written. Build/test evidenc
 ## Cross-module synchronization
 All modules read and write the same local Dexie database. Live queries update related screens without a manual refresh or internet connection. Budget entries update Dashboard balance and recent activity; schedule, subject, activity, and task changes refresh the timetable, Dashboard, reminders, and widget snapshot where relevant. Deleting a subject preserves its notes and tasks by unlinking them.
 
-## Current progress
-See IMPLEMENTATION_STATUS.md.
+## React Native migration status
+
+The first native shell now has Dashboard, Schedule, Budget, Notes, Tasks, and Settings tabs, with initial SQLite-backed class, expense/income, note, task, and local-profile flows. Weekly schedule display, allowance recording, notification scheduling, and finance calculations are being ported. Savings, category limits, checklists, complete timetable editing, backup import/export, native widget, and migration of existing user data are not yet fully ported. Do not uninstall the existing APK or clear its app data until a backup-import path is verified.
+
+The React Native CI workflow builds a debug APK with `expo prebuild` and Gradle. See IMPLEMENTATION_STATUS.md for the current build evidence.
 
 ## Engineering research
 
