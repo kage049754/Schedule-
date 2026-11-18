@@ -55,10 +55,12 @@
 - [x] Added configurable task deadline reminder timing (on due date or 1/2/3/7 days before, with a selected local time).
 - [x] Ensure stale managed notifications are cancelled when records/settings change, even if notification permission is later revoked.
 - [x] Added notification actions for Snooze 10 min and Dismiss; CI compiled them into the Android app.
-- [ ] Add a bundled custom alarm sound and test actual sound/vibration delivery on device.
+- [x] Added a generated, bundled three-note Schedule chime to Android `res/raw`; notification channels select sound and vibration independently, with versioned channel IDs so Android applies the changed channel configuration.
+- [ ] Verify actual sound/vibration delivery and user channel overrides on a physical Android device.
 - [x] Added a native Android home-screen widget provider, Capacitor bridge, and local SharedPreferences snapshot; compiled and manifest/plugin registration checks passed in [Run #169](https://github.com/kage049754/Schedule-/actions/runs/44162564899).
 - [x] Verified widget layout/resources and provider/plugin classes are packaged in the Run #144 APK; physical launcher placement and refresh behavior still need device testing.
-- [ ] Reschedule reminders after reboot and verify notification/widget behavior under Do Not Disturb, battery restrictions, and notification permission changes.
+- [x] Verified the installed Capacitor Local Notifications plugin manifest includes `LocalNotificationRestoreReceiver` for BOOT_COMPLETED, LOCKED_BOOT_COMPLETED, and QUICKBOOT_POWERON; CI now checks the merged APK manifest and RECEIVE_BOOT_COMPLETED permission.
+- [ ] Verify restored reminders and widget refresh after reboot, including Do Not Disturb, battery restrictions, and notification permission changes.
 
 ### Current feature status
 - Dashboard: reactive class, activity, task, and finance summaries; recent income/expense activity; and period-aware allowance totals are wired. Date-scoped finance reporting remains.
@@ -66,11 +68,11 @@
 - Budget/Savings: user-facing local allowance, income, expense, category, goal, deposit, and withdrawal flows are implemented; category spending limits and live today/week/month/all-time reports are date-scoped; Dashboard consumes the same live ledger.
 - Notepad: user-facing editor, search, personal/lecture/subject linking, pin, archive, and delete are implemented.
 - Tasks: assignment editor, due dates, priorities, subject links, checklists, completion, and overdue views are implemented.
-- Settings: local profile, bottom-navigation module visibility/order, backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Appearance and custom alarm sound remain.
+- Settings: local profile, bottom-navigation module visibility/order, backup export/restore, and class/activity/task reminder controls are implemented; notification actions include Snooze 10 min and Dismiss. Appearance and appearance customization remains; physical chime delivery still requires device QA.
 - Android: CI generates the Capacitor project and successfully builds a debug APK. Run #160 APK extracted at 4,223,730 bytes; SHA-256 `80459e5165ff1b74d452c157f9d62936dfe56f4c3bcf00f2e0dd94ae29bb7327`. Widget resources/provider/plugin and reminder action strings are packaged. Physical-device install/display/action QA remains.
 
 ### Next actions selected from current gaps
-1. Add a bundled custom alarm sound and reboot-safe reminder recovery; verify exact/inexact alarm fallback.
+1. Verify bundled chime playback and boot restoration on a physical Android device; investigate any OEM-specific delivery failures.
 2. Add notification/widget physical-device QA instructions and test installation, permission flows, vibration, snooze/dismiss actions, widget placement, and refresh on the Infinix phone.
 3. Complete date-scoped finance reports, Settings profile/module customization, and accessibility/persistence checks.
 4. Review and safely remediate remaining dependency audit findings without incompatible major upgrades; add a reproducible lockfile.
