@@ -22,7 +22,7 @@ import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { normalizeNavigationPreferences } from './src-native/navigation';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 let ACTIVE_COLORS = COLORS;
@@ -75,6 +75,10 @@ export default function App() {
   const [navigationOrder, setNavigationOrder] = useState(TABS.map(item => item.id));
   const [hiddenTabs, setHiddenTabs] = useState([]);
   const [reportPeriod, setReportPeriod] = useState('month');
+  const [noteSearch, setNoteSearch] = useState('');
+  const [noteKindFilter, setNoteKindFilter] = useState('all');
+  const [showArchivedNotes, setShowArchivedNotes] = useState(false);
+  const [noteEditorOpen, setNoteEditorOpen] = useState(false);
   ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
 
   const refreshData = async (database = db) => {
@@ -91,7 +95,7 @@ export default function App() {
       database.getAllAsync('SELECT * FROM income ORDER BY date DESC, id DESC'),
       database.getAllAsync('SELECT * FROM expenses ORDER BY date DESC, id DESC'),
       database.getAllAsync('SELECT * FROM allowances'),
-      database.getAllAsync('SELECT * FROM notes WHERE archived=0 ORDER BY pinned DESC, updatedAt DESC'),
+      database.getAllAsync('SELECT * FROM notes ORDER BY pinned DESC, updatedAt DESC'),
       database.getAllAsync("SELECT g.*, COALESCE((SELECT SUM(CASE WHEN e.type='withdrawal' THEN -e.amount ELSE e.amount END) FROM savingsEntries e WHERE e.goalId=g.id),0) AS savedAmount FROM savingsGoals g ORDER BY g.id DESC"),
       database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name'),
       database.getAllAsync('SELECT * FROM savingsEntries ORDER BY date DESC, id DESC'),
@@ -330,9 +334,62 @@ export default function App() {
     } catch (error) { showError(error); }
   };
   const addNote = async () => {
-    try { const title=(form.noteTitle||'').trim(), content=(form.noteContent||'').trim(); if(!title||!content) throw new Error('Enter a title and note content.');
-      await db.runAsync('INSERT INTO notes (title,content,kind,updatedAt,archived,pinned) VALUES (?,?,?,?,0,0)',title,content,form.noteKind||'personal',new Date().toISOString()); resetForm(); changed();
-    } catch(error){showError(error);}
+    try {
+      const note = normalizeNativeNote({
+        title: form.noteTitle,
+        content: form.noteContent,
+        kind: form.noteKind || 'personal',
+        subjectId: form.noteSubjectId || null,
+        pinned: form.notePinned,
+      });
+      if (note.subjectId) {
+        const subject = await db.getFirstAsync('SELECT id FROM subjects WHERE id=?', note.subjectId);
+        if (!subject) throw new Error('The selected subject no longer exists.');
+      }
+      const now = new Date().toISOString();
+      const editingId = Number(form.noteId || 0);
+      if (editingId) {
+        const existing = await db.getFirstAsync('SELECT id FROM notes WHERE id=?', editingId);
+        if (!existing) throw new Error('This note no longer exists.');
+        await db.runAsync('UPDATE notes SET title=?,content=?,kind=?,subjectId=?,pinned=?,updatedAt=? WHERE id=?',
+          note.title, note.content, note.kind, note.subjectId, note.pinned ? 1 : 0, now, editingId);
+      } else {
+        await db.runAsync('INSERT INTO notes (title,content,kind,subjectId,updatedAt,archived,pinned) VALUES (?,?,?,?,?,0,?)',
+          note.title, note.content, note.kind, note.subjectId, now, note.pinned ? 1 : 0);
+      }
+      resetForm();
+      setNoteEditorOpen(false);
+      changed();
+    } catch (error) { showError(error); }
+  };
+  const startNewNote = () => {
+    setForm({ noteTitle: '', noteContent: '', noteKind: 'personal', noteSubjectId: '', notePinned: false });
+    setNoteEditorOpen(true);
+  };
+  const startEditNote = (note) => {
+    setForm({
+      noteId: String(note.id),
+      noteTitle: note.title || '',
+      noteContent: note.content || '',
+      noteKind: note.kind || 'personal',
+      noteSubjectId: note.subjectId ? String(note.subjectId) : '',
+      notePinned: Boolean(note.pinned),
+    });
+    setNoteEditorOpen(true);
+  };
+  const toggleNotePinned = async (note) => {
+    try {
+      await db.runAsync('UPDATE notes SET pinned=?,updatedAt=? WHERE id=?',
+        note.pinned ? 0 : 1, new Date().toISOString(), note.id);
+      changed();
+    } catch (error) { showError(error); }
+  };
+  const toggleNoteArchived = async (note) => {
+    try {
+      await db.runAsync('UPDATE notes SET archived=?,updatedAt=? WHERE id=?',
+        note.archived ? 0 : 1, new Date().toISOString(), note.id);
+      changed();
+    } catch (error) { showError(error); }
   };
   const addTask = async () => {
     try { const title=(form.taskTitle||'').trim(); if(!title) throw new Error('Enter a task title.');
@@ -534,8 +591,59 @@ export default function App() {
       </Card>
     </>;
   };
-  const renderNotes = () => <><Heading detail="Personal, lecture, and subject notes stored locally.">Notepad</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>New note</Text><Field label="Title" value={form.noteTitle||''} onChangeText={v=>updateForm('noteTitle',v)}/><Field label="Content" value={form.noteContent||''} onChangeText={v=>updateForm('noteContent',v)} multiline/><Field label="Type (personal / lecture / subject)" value={form.noteKind||'personal'} onChangeText={v=>updateForm('noteKind',v)}/><Button title="Save note" onPress={addNote}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Saved notes</Text>{data.notes.map(x=><Item key={x.id} title={(x.pinned?'★ ':'')+x.title} detail={x.kind+' · '+(x.updatedAt||'').slice(0,10)} onDelete={()=>remove('notes',x.id)}/>) }{!data.notes.length?<Empty text="No notes saved yet."/>:null}</Card></>;
-
+  const renderNotes = () => {
+    const visibleNotes = filterNativeNotes(data.notes, noteSearch, noteKindFilter, showArchivedNotes);
+    const subjectName = id => data.subjects.find(subject => subject.id === id)?.code || '';
+    return <>
+      <Heading detail="Personal, lecture, and subject-linked notes stored locally.">Notepad</Heading>
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Find notes</Text>
+        <Field label="Search titles and note content" value={noteSearch} onChangeText={setNoteSearch} placeholder="Search notes"/>
+        <View style={styles.budgetActionRow}>
+          {['all','personal','lecture','subject'].map(kind=><Button key={kind} compact secondary={noteKindFilter!==kind} title={kind==='all'?'All':kind[0].toUpperCase()+kind.slice(1)} onPress={()=>setNoteKindFilter(kind)}/>)}
+          <Button compact secondary={!showArchivedNotes} title={showArchivedNotes?'Archived':'Archive'} onPress={()=>setShowArchivedNotes(value=>!value)}/>
+        </View>
+        <Button title={noteEditorOpen?'Close editor':'New note'} onPress={()=>noteEditorOpen?setNoteEditorOpen(false):startNewNote()}/>
+        {noteEditorOpen && <>
+          <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>{form.noteId?'Edit note':'New note'}</Text>
+          <Field label="Title" value={form.noteTitle||''} onChangeText={v=>updateForm('noteTitle',v)} placeholder="Note title"/>
+          <Field label="Content" value={form.noteContent||''} onChangeText={v=>updateForm('noteContent',v)} multiline placeholder="Write your notes here…"/>
+          <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Note type</Text>
+          <View style={styles.budgetActionRow}>
+            {['personal','lecture','subject'].map(kind=><Button key={kind} compact secondary={(form.noteKind||'personal')!==kind} title={kind[0].toUpperCase()+kind.slice(1)} onPress={()=>{updateForm('noteKind',kind);if(kind!=='subject')updateForm('noteSubjectId','');}}/>)}
+          </View>
+          {form.noteKind==='subject' && <>
+            <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Linked subject</Text>
+            {data.subjects.length ? <View style={styles.budgetActionRow}>{data.subjects.map(subject=><Button key={subject.id} compact secondary={String(form.noteSubjectId||'')!==String(subject.id)} title={subject.code} onPress={()=>updateForm('noteSubjectId',String(subject.id))}/>)}</View> : <Empty text="Add a subject in Schedule before linking a note."/>}
+          </>}
+          <Button secondary title={form.notePinned?'Unpin this note':'Pin this note'} onPress={()=>updateForm('notePinned',!form.notePinned)}/>
+          <Button title={form.noteId?'Save note changes':'Save note'} onPress={addNote}/>
+          <Button secondary title="Cancel" onPress={()=>{resetForm();setNoteEditorOpen(false);}}/>
+        </>}
+      </Card>
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>{showArchivedNotes?'Archived notes':'Saved notes'} · {visibleNotes.length}</Text>
+        {visibleNotes.map(note=><View key={note.id} style={styles.noteRow}>
+          <View style={styles.rowBetween}>
+            <View style={styles.itemText}>
+              <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink}]}>{note.pinned?'★ ':''}{note.title}</Text>
+              <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.forest}]}>{note.kind||'personal'}{note.subjectId&&subjectName(note.subjectId)?' · '+subjectName(note.subjectId):''}</Text>
+            </View>
+            <Button compact secondary title="Edit" onPress={()=>startEditNote(note)}/>
+          </View>
+          <Text style={[styles.noteBody,{color:ACTIVE_COLORS.ink}]}>{note.content}</Text>
+          <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Updated {(note.updatedAt||'').slice(0,16).replace('T',' ')}</Text>
+          <View style={styles.budgetActionRow}>
+            <Button compact secondary title={note.pinned?'Unpin':'Pin'} onPress={()=>toggleNotePinned(note)}/>
+            <Button compact secondary title={note.archived?'Restore':'Archive'} onPress={()=>toggleNoteArchived(note)}/>
+            <Button compact secondary danger title="Delete" onPress={()=>remove('notes',note.id)}/>
+          </View>
+        </View>)}
+        {!visibleNotes.length?<Empty text={showArchivedNotes?'No archived notes.':noteSearch?'No notes match your search.':'Your notes will appear here.'}/>:null}
+      </Card>
+      <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Notes are stored in the local SQLite database and remain available offline.</Text>
+    </>;
+  };
   const renderTasks = () => <><Heading detail="Assignments, deadlines, and priorities.">Tasks</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a task</Text><Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)}/><Field label="Due date (YYYY-MM-DD, optional)" value={form.dueDate||''} onChangeText={v=>updateForm('dueDate',v)}/><Field label="Priority (Low / Normal / High)" value={form.priority||'Normal'} onChangeText={v=>updateForm('priority',v)}/><Button title="Add task" onPress={addTask}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Your tasks</Text>{data.tasks.map(x=><View key={x.id} style={styles.taskRow}><Pressable onPress={()=>toggleTask(x)} style={[styles.check,x.completed&&styles.checked,x.completed&&{backgroundColor:ACTIVE_COLORS.forest,borderColor:ACTIVE_COLORS.forest}]}><Text style={styles.checkText}>{x.completed?'✓':''}</Text></Pressable><View style={styles.itemText}><Text style={[styles.itemTitle,x.completed&&styles.done]}>{x.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{x.dueDate?'Due '+x.dueDate:'No due date'} · {x.priority}</Text></View><Pressable onPress={()=>remove('tasks',x.id)}><Trash2 size={17} color={ACTIVE_COLORS.red}/></Pressable></View>)}{!data.tasks.length?<Empty text="No tasks yet."/>:null}</Card></>;
 
   const saveAppearancePreference = async (id) => {
@@ -629,6 +737,6 @@ const styles=StyleSheet.create({
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
   modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
   themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
-  budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},
+  budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},noteRow:{gap:9,paddingVertical:11,borderTopWidth:1,borderTopColor:COLORS.line},noteBody:{fontSize:13,lineHeight:20},
   item:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed',gap:9},itemText:{flex:1},itemTitle:{fontSize:14,fontWeight:'700',color:COLORS.ink},itemDetail:{fontSize:11,color:COLORS.muted,marginTop:3},trailing:{fontSize:12,fontWeight:'800',color:COLORS.forest},delete:{padding:5},empty:{fontSize:12,color:COLORS.muted,paddingVertical:12},taskRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed'},check:{width:23,height:23,borderWidth:1.5,borderColor:'#b8c7bd',borderRadius:7,alignItems:'center',justifyContent:'center'},checked:{backgroundColor:COLORS.forest,borderColor:COLORS.forest},checkText:{color:'#fff',fontWeight:'900'},done:{textDecorationLine:'line-through',color:'#9aa39b'},switchRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:7},nav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:7,paddingBottom:Platform.OS==='android'?7:3,paddingHorizontal:2},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3,paddingVertical:4,borderRadius:10},navActive:{backgroundColor:'#edf4ef'},navLabel:{fontSize:9,color:'#89948c',fontWeight:'600'},navLabelActive:{color:COLORS.forest,fontWeight:'900'}
 });

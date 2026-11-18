@@ -32,7 +32,7 @@
 - [x] Run all native domain and backup tests in CI, validate Expo module compatibility, build the arm64 APK, and inspect the workflow APK-verification step in [Run #232](https://github.com/kage049754/Schedule-/actions/runs/44252235863). Artifact download and independent package inspection remain pending.
 - [ ] Verify a real export from the Capacitor app can be imported on the target Android phone and round-tripped back to JSON before replacing `main`.
 - [x] Ported native Budget parity: date-specific income/expense entries, editable category creation by expense entry, daily/weekly/monthly category limits, savings goals, deposits/withdrawals with transaction-protected balance checks, and today/week/month/all-time money reports with transaction deletion.
-- [ ] Complete remaining native parity: note edit/search/pin/archive, task checklists, and native widget verification.
+- [ ] Complete remaining native parity: task edit/search/views/checklists and native widget verification.
 - [x] Added a native Appearance section with persistent Forest (default), Sunset, and Monochrome light themes; palette is applied to app surfaces, cards, fields, buttons, balance/stat accents, and bottom navigation.
 - [ ] Verify appearance and Budget preference/data persistence after app restart and visual consistency on the target phone.
 - [ ] Device QA on Android; physical behavior is not yet verified.
@@ -136,4 +136,10 @@ Inspect → research → plan the smallest useful change → implement → test 
 - [ ] Verify budget changes update Dashboard and survive app restart on a physical Android device.
 
 - [x] Investigated Run #250 test logs (25/27 passing), corrected the escaped date-key validator and fixed the monthly-report fixture to place its exclusion record in the previous month.
-- [ ] Re-run the full CI suite and Android APK verification after the Budget port fixes.
+- [x] Re-ran the full CI suite after the Budget fixes in [Run #251](https://github.com/kage049754/Schedule-/actions/runs/44352296932): 27 tests passed; Gradle APK build and package/manifest/embedded-bundle verification passed; artifact uploaded and independently extracted (54,257,905 bytes; SHA-256 `27677e253b9889b46f3a76dd603f0428a8a9d5a401bff0c46db16db7a4f95486`).
+
+### Native Notepad parity implementation
+- [x] Added note editing and subject linking with validation against locally stored subjects.
+- [x] Added title/body search, personal/lecture/subject filters, pinned-first ordering, and archived/active views.
+- [x] Added pin/unpin and archive/restore actions; note content remains local and offline.
+- [ ] Verify note editing, archive state, and search persistence after app restart on the target Android device.

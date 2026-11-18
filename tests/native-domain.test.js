@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions } from '../src-native/domain.js';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes } from '../src-native/domain.js';
 
 test('money is stored as integer centavos', () => {
   assert.equal(parseMoneyToCentavos('205'), 20500);
@@ -98,4 +98,25 @@ test('money reports filter by period and sort newest transactions first', () => 
   assert.equal(result.net, 3000);
   assert.equal(result.transactionCount, 2);
   assert.deepEqual(result.transactions.map(item => item.id), [3, 1]);
+});
+
+test('native notes require title and content and preserve valid subject links', () => {
+  assert.deepEqual(normalizeNativeNote({ title: '  HCI  ', content: '  Review prototype  ', kind: 'subject', subjectId: '4', pinned: true }),
+    { title: 'HCI', content: 'Review prototype', kind: 'subject', subjectId: 4, pinned: true });
+  assert.equal(normalizeNativeNote({ title: 'Personal', content: 'Text' }).kind, 'personal');
+  assert.throws(() => normalizeNativeNote({ title: '', content: 'Text' }), /title/);
+  assert.throws(() => normalizeNativeNote({ title: 'Title', content: ' ' }), /Write something/);
+  assert.throws(() => normalizeNativeNote({ title: 'Title', content: 'Text', kind: 'subject' }), /Choose a subject/);
+});
+
+test('native note search, kind filters, archive state, and pinned ordering work together', () => {
+  const notes = [
+    { id: 1, title: 'Lecture 1', content: 'Database normalization', kind: 'lecture', updatedAt: '2026-11-17', pinned: 0, archived: 0 },
+    { id: 2, title: 'Exam prep', content: 'Database final review', kind: 'personal', updatedAt: '2026-11-16', pinned: 1, archived: 0 },
+    { id: 3, title: 'Old lecture', content: 'Normalization', kind: 'lecture', updatedAt: '2026-11-15', pinned: 1, archived: 1 },
+  ];
+  assert.deepEqual(filterNativeNotes(notes, 'database').map(note => note.id), [2, 1]);
+  assert.deepEqual(filterNativeNotes(notes, '', 'lecture').map(note => note.id), [1]);
+  assert.deepEqual(filterNativeNotes(notes, '', 'all', true).map(note => note.id), [3]);
+  assert.deepEqual(filterNativeNotes(notes, 'missing').map(note => note.id), []);
 });

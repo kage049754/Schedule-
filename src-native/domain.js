@@ -133,3 +133,26 @@ export function summarizeBudgetTransactions(income = [], expenses = [], period =
     transactions,
   };
 }
+
+export function normalizeNativeNote(input = {}) {
+  const title = String(input.title || '').trim();
+  const content = String(input.content || '').trim();
+  const kind = ['personal', 'lecture', 'subject'].includes(input.kind) ? input.kind : 'personal';
+  if (!title) throw new Error('Enter a note title.');
+  if (!content) throw new Error('Write something before saving the note.');
+  const subjectId = kind === 'subject' && input.subjectId ? Number(input.subjectId) : null;
+  if (kind === 'subject' && (!Number.isInteger(subjectId) || subjectId <= 0)) {
+    throw new Error('Choose a subject for this note.');
+  }
+  return { title, content, kind, subjectId, pinned: Boolean(input.pinned) };
+}
+
+export function filterNativeNotes(notes = [], search = '', kind = 'all', archived = false) {
+  const query = String(search || '').trim().toLocaleLowerCase();
+  return notes
+    .filter(note => Boolean(Number(note.archived || 0)) === Boolean(archived))
+    .filter(note => kind === 'all' || note.kind === kind)
+    .filter(note => !query || [note.title, note.content].some(value => String(value || '').toLocaleLowerCase().includes(query)))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+      || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+}
