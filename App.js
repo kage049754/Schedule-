@@ -16,7 +16,7 @@ const GraduationCap = (props) => <MaterialCommunityIcons name="school-outline" {
 const Bell = (props) => <MaterialCommunityIcons name="bell-outline" {...props}/>;
 const Plus = (props) => <MaterialCommunityIcons name="plus" {...props}/>;
 import { getDatabase, getSetting, setSetting } from './src-native/database';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, calculateAvailableBalance } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 const TABS = [
@@ -30,8 +30,8 @@ const TABS = [
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const todayKey = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-'); };
 const peso = (centavos = 0) => '₱' + (Number(centavos || 0) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const parseAmount = (value) => { const n = Number(String(value).replace(/,/g, '').trim()); if (!Number.isFinite(n) || n <= 0) throw new Error('Enter an amount greater than ₱0.00.'); return Math.round(n * 100); };
-const parseTime = (value) => { const match = /^(\\d{1,2}):(\\d{2})$/.exec(value.trim()); if (!match) throw new Error('Use 24-hour time, for example 08:30.'); const h=Number(match[1]), m=Number(match[2]); if(h>23||m>59) throw new Error('Enter a valid time.'); return h*60+m; };
+const parseAmount = parseMoneyToCentavos;
+const parseTime = parseTimeToMinutes;
 const timeLabel = (mins) => new Date(2000,0,1,Math.floor(mins/60),mins%60).toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'});
 const showError = (error) => Alert.alert('Schedule', error?.message || 'Something went wrong.');
 
@@ -224,7 +224,7 @@ export default function App() {
   </>;
 
   const renderSchedule = () => <><Heading detail="Monday–Saturday · Local timetable">Schedule</Heading><Card><Text style={styles.cardTitle}>Add a class</Text><Field label="Subject code" value={form.code||''} onChangeText={v=>updateForm('code',v)} placeholder="e.g. ITEC 80"/><Field label="Subject name" value={form.subjectName||''} onChangeText={v=>updateForm('subjectName',v)}/><Field label="Professor (optional)" value={form.professor||''} onChangeText={v=>updateForm('professor',v)}/><Field label="Room" value={form.room||''} onChangeText={v=>updateForm('room',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.day||'1'} onChangeText={v=>updateForm('day',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.start||'08:00'} onChangeText={v=>updateForm('start',v)}/><Field label="End (24-hour)" value={form.end||'09:00'} onChangeText={v=>updateForm('end',v)}/><Field label="Type (Lecture or Lab)" value={form.kind||'Lecture'} onChangeText={v=>updateForm('kind',v)}/><Button title="Add class" onPress={addClass}/></Card>
-    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.allClasses.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries for today. Add one above; other days are visible on the Dashboard after switching days in the full timetable phase."/>}</Card>
+    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.allClasses.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries yet."/>}</Card>
     <Card><Text style={styles.cardTitle}>Subjects</Text>{data.subjects.map(x=><Item key={x.id} title={x.code+' — '+x.name} detail={x.professor||'Professor not set'}/>)}</Card>
   </>;
 
