@@ -5,7 +5,7 @@ const schema = [
   'CREATE TABLE IF NOT EXISTS profile (id TEXT PRIMARY KEY NOT NULL, displayName TEXT, program TEXT, yearSection TEXT, updatedAt TEXT)',
   'CREATE TABLE IF NOT EXISTS subjects (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, professor TEXT, lectureRoom TEXT, labRoom TEXT, color TEXT, createdAt TEXT)',
   'CREATE TABLE IF NOT EXISTS scheduleSlots (id INTEGER PRIMARY KEY AUTOINCREMENT, subjectId INTEGER NOT NULL, day INTEGER NOT NULL, startMinutes INTEGER NOT NULL, endMinutes INTEGER NOT NULL, kind TEXT NOT NULL, room TEXT, active INTEGER DEFAULT 1, createdAt TEXT)',
-  'CREATE TABLE IF NOT EXISTS activities (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, day INTEGER NOT NULL, startMinutes INTEGER NOT NULL, endMinutes INTEGER NOT NULL, location TEXT, notes TEXT, createdAt TEXT)',
+  'CREATE TABLE IF NOT EXISTS activities (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, day INTEGER NOT NULL, startMinutes INTEGER NOT NULL, endMinutes INTEGER NOT NULL, date TEXT, location TEXT, notes TEXT, createdAt TEXT)',
   'CREATE TABLE IF NOT EXISTS allowances (id INTEGER PRIMARY KEY AUTOINCREMENT, amount INTEGER NOT NULL, period TEXT NOT NULL, startDate TEXT NOT NULL, endDate TEXT NOT NULL, createdAt TEXT)',
   'CREATE TABLE IF NOT EXISTS income (id INTEGER PRIMARY KEY AUTOINCREMENT, amount INTEGER NOT NULL, source TEXT NOT NULL, date TEXT NOT NULL, createdAt TEXT)',
   'CREATE TABLE IF NOT EXISTS expenses (id INTEGER PRIMARY KEY AUTOINCREMENT, amount INTEGER NOT NULL, description TEXT NOT NULL, categoryId INTEGER, date TEXT NOT NULL, createdAt TEXT)',
@@ -23,6 +23,10 @@ export async function getDatabase() {
   database = await SQLite.openDatabaseAsync('schedule-local.db');
   await database.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
   for (const statement of schema) await database.execAsync(statement);
+  const activityColumns = await database.getAllAsync('PRAGMA table_info(activities)');
+  if (!activityColumns.some(column => column.name === 'date')) {
+    await database.execAsync('ALTER TABLE activities ADD COLUMN date TEXT');
+  }
   await database.runAsync('INSERT OR IGNORE INTO categories (name, type, active) VALUES (?, ?, 1), (?, ?, 1), (?, ?, 1), (?, ?, 1), (?, ?, 1), (?, ?, 1)', 'Food', 'expense', 'Transportation', 'expense', 'School', 'expense', 'Bills', 'expense', 'Health', 'expense', 'Others', 'expense');
   await database.runAsync('INSERT OR IGNORE INTO profile (id, displayName, program, yearSection, updatedAt) VALUES (?, ?, ?, ?, ?)', 'local', '', '', '', new Date().toISOString());
   return database;
