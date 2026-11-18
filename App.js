@@ -58,9 +58,10 @@ export default function App() {
   const refreshData = async (database = db) => {
     if (!database) return;
     const day = new Date().getDay(), today = todayKey();
-    const [profile, classes, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories] = await Promise.all([
+    const [profile, classes, allClasses, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories] = await Promise.all([
       database.getFirstAsync('SELECT * FROM profile WHERE id = ?', 'local'),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.day=? AND s.active=1 ORDER BY s.startMinutes', day),
+      database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.active=1 ORDER BY s.day,s.startMinutes'),
       database.getAllAsync('SELECT * FROM activities WHERE day=? ORDER BY startMinutes', day),
       database.getAllAsync('SELECT * FROM subjects ORDER BY code'),
       database.getAllAsync('SELECT * FROM tasks ORDER BY completed, dueDate IS NULL, dueDate'),
@@ -68,10 +69,10 @@ export default function App() {
       database.getAllAsync('SELECT * FROM expenses ORDER BY date DESC, id DESC'),
       database.getAllAsync('SELECT * FROM allowances'),
       database.getAllAsync('SELECT * FROM notes WHERE archived=0 ORDER BY pinned DESC, updatedAt DESC'),
-      database.getAllAsync('SELECT * FROM savingsGoals ORDER BY id DESC'),
+      database.getAllAsync("SELECT g.*, COALESCE((SELECT SUM(CASE WHEN e.type='withdrawal' THEN -e.amount ELSE e.amount END) FROM savingsEntries e WHERE e.goalId=g.id),0) AS savedAmount FROM savingsGoals g ORDER BY g.id DESC"),
       database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name')
     ]);
-    setData({ profile: profile || {}, classes, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories });
+    setData({ profile: profile || {}, classes, allClasses, activities, subjects, tasks, income, expenses, allowances, notes, goals, categories });
   };
 
   useEffect(() => {
@@ -159,7 +160,7 @@ export default function App() {
       let subject=await db.getFirstAsync('SELECT * FROM subjects WHERE code=?',code);
       if(!subject){const result=await db.runAsync('INSERT INTO subjects (code,name,professor,lectureRoom,labRoom,color,createdAt) VALUES (?,?,?,?,?,?,?)',code,name,form.professor||'',form.room||'',form.labRoom||'','forest',new Date().toISOString()); subject={id:result.lastInsertRowId,code,name};}
       const entries=await db.getAllAsync('SELECT startMinutes,endMinutes FROM scheduleSlots WHERE day=? AND active=1 UNION ALL SELECT startMinutes,endMinutes FROM activities WHERE day=?',day,day);
-      if(entries.some(x=>startMinutes<x.endMinutes&&endMinutes>x.startMinutes)) throw new Error('This time overlaps an existing class or activity. Nothing was changed.');
+      if(hasTimeConflict(entries, { startMinutes, endMinutes })) throw new Error('This time overlaps an existing class or activity. Nothing was changed.');
       await db.runAsync('INSERT INTO scheduleSlots (subjectId,day,startMinutes,endMinutes,kind,room,active,createdAt) VALUES (?,?,?,?,?,?,1,?)',subject.id,day,startMinutes,endMinutes,form.kind==='Lab'?'Lab':'Lecture',form.room||'',new Date().toISOString());
       resetForm(); changed();
     } catch(error){showError(error);}
@@ -203,7 +204,7 @@ export default function App() {
   </>;
 
   const renderSchedule = () => <><Heading detail="Monday–Saturday · Local timetable">Schedule</Heading><Card><Text style={styles.cardTitle}>Add a class</Text><Field label="Subject code" value={form.code||''} onChangeText={v=>updateForm('code',v)} placeholder="e.g. ITEC 80"/><Field label="Subject name" value={form.subjectName||''} onChangeText={v=>updateForm('subjectName',v)}/><Field label="Professor (optional)" value={form.professor||''} onChangeText={v=>updateForm('professor',v)}/><Field label="Room" value={form.room||''} onChangeText={v=>updateForm('room',v)}/><Field label="Day (1=Mon … 6=Sat)" value={form.day||'1'} onChangeText={v=>updateForm('day',v)} keyboardType="number-pad"/><Field label="Start (24-hour)" value={form.start||'08:00'} onChangeText={v=>updateForm('start',v)}/><Field label="End (24-hour)" value={form.end||'09:00'} onChangeText={v=>updateForm('end',v)}/><Field label="Type (Lecture or Lab)" value={form.kind||'Lecture'} onChangeText={v=>updateForm('kind',v)}/><Button title="Add class" onPress={addClass}/></Card>
-    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.classes.length?data.classes.map(x=><Item key={x.id} title={(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries for today. Add one above; other days are visible on the Dashboard after switching days in the full timetable phase."/>}</Card>
+    <Card><Text style={styles.cardTitle}>Today's timetable</Text>{data.classes.length?data.allClasses.map(x=><Item key={x.id} title={DAYS[x.day]+' · '+(x.code||x.subjectName)+' · '+x.kind} detail={(x.room||'No room')+' · '+timeLabel(x.startMinutes)+'–'+timeLabel(x.endMinutes)} onDelete={()=>remove('scheduleSlots',x.id)}/>):<Empty text="No class entries for today. Add one above; other days are visible on the Dashboard after switching days in the full timetable phase."/>}</Card>
     <Card><Text style={styles.cardTitle}>Subjects</Text>{data.subjects.map(x=><Item key={x.id} title={x.code+' — '+x.name} detail={x.professor||'Professor not set'}/>)}</Card>
   </>;
 
