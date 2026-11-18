@@ -48,6 +48,8 @@ jobs:
         run: node --test tests/*.test.js
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
+      - name: Verify embedded debug bundle configuration
+        run: grep -Fq 'debuggableVariants = []' android/app/build.gradle
       - name: Build debug APK
         run: |
           cd android
@@ -60,6 +62,10 @@ jobs:
           $ANDROID_HOME/build-tools/36.0.0/aapt dump badging "$APK" | grep -q "package: name='com.schedule.studentplanner'"
           $ANDROID_HOME/build-tools/36.0.0/aapt dump xmltree "$APK" AndroidManifest.xml > /tmp/schedule-native-manifest.txt
           grep -q 'RECEIVE_BOOT_COMPLETED' /tmp/schedule-native-manifest.txt
+          unzip -Z1 "$APK" | grep -qx 'assets/index.android.bundle'
+          BUNDLE_BYTES="$(unzip -p "$APK" assets/index.android.bundle | wc -c)"
+          test "$BUNDLE_BYTES" -gt 100000
+          echo "Embedded React Native bundle: $BUNDLE_BYTES bytes"
           test -s assets/schedule_chime.wav
           file assets/schedule_chime.wav
           sha256sum "$APK"
