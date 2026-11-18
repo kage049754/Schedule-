@@ -156,3 +156,36 @@ export function filterNativeNotes(notes = [], search = '', kind = 'all', archive
     .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
       || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
 }
+
+export function normalizeNativeTask(input = {}) {
+  const title = String(input.title || '').trim();
+  if (!title) throw new Error('Enter a task title.');
+  const dueDate = String(input.dueDate || '').trim();
+  if (dueDate && !isValidDateKey(dueDate)) throw new Error('Choose a valid due date using YYYY-MM-DD.');
+  const priorityValue = String(input.priority || 'Normal').trim().toLowerCase();
+  const priority = priorityValue === 'high' ? 'High' : priorityValue === 'low' ? 'Low' : 'Normal';
+  const subjectId = input.subjectId ? Number(input.subjectId) : null;
+  if (subjectId !== null && (!Number.isInteger(subjectId) || subjectId <= 0)) {
+    throw new Error('Choose a valid subject.');
+  }
+  return { title, description: String(input.description || '').trim(), subjectId, dueDate: dueDate || null, priority };
+}
+
+export function filterNativeTasks(tasks = [], view = 'pending', search = '', today = dateKey(new Date())) {
+  const query = String(search || '').trim().toLocaleLowerCase();
+  if (!['pending', 'completed', 'overdue', 'all'].includes(view)) throw new Error('Choose a valid task view.');
+  const priority = { high: 0, normal: 1, low: 2 };
+  return tasks.filter(task => {
+    const completed = Boolean(Number(task.completed || 0));
+    if (view === 'pending' && completed) return false;
+    if (view === 'completed' && !completed) return false;
+    if (view === 'overdue' && (completed || !task.dueDate || task.dueDate >= today)) return false;
+    return !query || [task.title, task.description].some(value => String(value || '').toLocaleLowerCase().includes(query));
+  }).sort((a, b) => {
+    const dueA = a.dueDate || '9999-12-31';
+    const dueB = b.dueDate || '9999-12-31';
+    const priorityA = priority[String(a.priority || 'Normal').toLowerCase()] ?? 1;
+    const priorityB = priority[String(b.priority || 'Normal').toLowerCase()] ?? 1;
+    return dueA.localeCompare(dueB) || priorityA - priorityB;
+  });
+}

@@ -22,7 +22,7 @@ import { getDatabase, getSetting, setSetting } from './src-native/database';
 import { exportNativeBackup, restoreNativeBackup } from './src-native/backupStorage';
 import { THEMES, normalizeAppearance } from './src-native/appearance';
 import { normalizeNavigationPreferences } from './src-native/navigation';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes } from './src-native/domain';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, calculateFinanceSummary, summarizeBudgetTransactions, calculateCategoryUsage, validateSavingsWithdrawal, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks } from './src-native/domain';
 
 const COLORS = { forest: '#174f3b', forest2: '#236b50', cream: '#f7f5ec', white: '#ffffff', ink: '#1f2937', muted: '#718096', line: '#e7e9e3', amber: '#b7791f', red: '#b42318' };
 let ACTIVE_COLORS = COLORS;
@@ -65,7 +65,7 @@ export default function App() {
   const [db, setDb] = useState(null);
   const [busy, setBusy] = useState(true);
   const [refresh, setRefresh] = useState(0);
-  const [data, setData] = useState({ profile: {}, classes: [], allClasses: [], activities: [], allActivities: [], subjects: [], tasks: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [], savingsEntries: [], categoryBudgets: [] });
+  const [data, setData] = useState({ profile: {}, classes: [], allClasses: [], activities: [], allActivities: [], subjects: [], tasks: [], taskChecklist: [], income: [], expenses: [], allowances: [], notes: [], goals: [], categories: [], savingsEntries: [], categoryBudgets: [] });
   const [form, setForm] = useState({});
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [leadMinutes, setLeadMinutes] = useState('10');
@@ -79,12 +79,15 @@ export default function App() {
   const [noteKindFilter, setNoteKindFilter] = useState('all');
   const [showArchivedNotes, setShowArchivedNotes] = useState(false);
   const [noteEditorOpen, setNoteEditorOpen] = useState(false);
+  const [taskSearch, setTaskSearch] = useState('');
+  const [taskView, setTaskView] = useState('pending');
+  const [expandedTaskId, setExpandedTaskId] = useState(null);
   ACTIVE_COLORS = THEMES[appearance] || THEMES.forest;
 
   const refreshData = async (database = db) => {
     if (!database) return;
     const day = new Date().getDay(), today = todayKey();
-    const [profile, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets] = await Promise.all([
+    const [profile, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets, taskChecklist] = await Promise.all([
       database.getFirstAsync('SELECT * FROM profile WHERE id = ?', 'local'),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.day=? AND s.active=1 ORDER BY s.startMinutes', day),
       database.getAllAsync('SELECT s.*, sub.code, sub.name AS subjectName FROM scheduleSlots s LEFT JOIN subjects sub ON sub.id=s.subjectId WHERE s.active=1 ORDER BY s.day,s.startMinutes'),
@@ -99,9 +102,10 @@ export default function App() {
       database.getAllAsync("SELECT g.*, COALESCE((SELECT SUM(CASE WHEN e.type='withdrawal' THEN -e.amount ELSE e.amount END) FROM savingsEntries e WHERE e.goalId=g.id),0) AS savedAmount FROM savingsGoals g ORDER BY g.id DESC"),
       database.getAllAsync('SELECT * FROM categories WHERE active=1 ORDER BY name'),
       database.getAllAsync('SELECT * FROM savingsEntries ORDER BY date DESC, id DESC'),
-      database.getAllAsync('SELECT * FROM categoryBudgets ORDER BY startDate DESC, id DESC')
+      database.getAllAsync('SELECT * FROM categoryBudgets ORDER BY startDate DESC, id DESC'),
+      database.getAllAsync('SELECT * FROM taskChecklist ORDER BY taskId, position, id')
     ]);
-    setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets });
+    setData({ profile: profile || {}, classes, allClasses, activities, allActivities, subjects, tasks, taskChecklist, income, expenses, allowances, notes, goals, categories, savingsEntries, categoryBudgets });
   };
 
   useEffect(() => {
@@ -391,11 +395,62 @@ export default function App() {
       changed();
     } catch (error) { showError(error); }
   };
-  const addTask = async () => {
-    try { const title=(form.taskTitle||'').trim(); if(!title) throw new Error('Enter a task title.');
-      const dueDate=(form.dueDate||'').trim(); if(dueDate&&!/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error('Use YYYY-MM-DD for the due date.');
-      const now=new Date().toISOString(); await db.runAsync('INSERT INTO tasks (title,dueDate,priority,completed,createdAt,updatedAt) VALUES (?,?,?,0,?,?)',title,dueDate||null,form.priority||'Normal',now,now); resetForm(); changed();
-    } catch(error){showError(error);}
+  const saveTask = async () => {
+    try {
+      const task = normalizeNativeTask({
+        title: form.taskTitle,
+        description: form.taskDescription,
+        dueDate: form.taskDueDate,
+        priority: form.taskPriority || 'Normal',
+        subjectId: form.taskSubjectId || null,
+      });
+      if (task.subjectId) {
+        const subject = await db.getFirstAsync('SELECT id FROM subjects WHERE id=?', task.subjectId);
+        if (!subject) throw new Error('The selected subject no longer exists.');
+      }
+      const now = new Date().toISOString();
+      const editingId = Number(form.taskId || 0);
+      if (editingId) {
+        const existing = await db.getFirstAsync('SELECT id FROM tasks WHERE id=?', editingId);
+        if (!existing) throw new Error('This task no longer exists.');
+        await db.runAsync('UPDATE tasks SET title=?,description=?,subjectId=?,dueDate=?,priority=?,updatedAt=? WHERE id=?',
+          task.title, task.description, task.subjectId, task.dueDate, task.priority, now, editingId);
+      } else {
+        await db.runAsync('INSERT INTO tasks (title,description,subjectId,dueDate,priority,completed,createdAt,updatedAt) VALUES (?,?,?,?,?,0,?,?)',
+          task.title, task.description, task.subjectId, task.dueDate, task.priority, now, now);
+      }
+      resetForm(); changed();
+    } catch (error) { showError(error); }
+  };
+  const startEditTask = (task) => {
+    setForm({
+      taskId: String(task.id),
+      taskTitle: task.title || '',
+      taskDescription: task.description || '',
+      taskSubjectId: task.subjectId ? String(task.subjectId) : '',
+      taskDueDate: task.dueDate || '',
+      taskPriority: task.priority || 'Normal',
+    });
+  };
+  const addChecklistItem = async (task) => {
+    try {
+      const key = 'checklist_' + task.id;
+      const text = String(form[key] || '').trim();
+      if (!text) throw new Error('Enter a checklist item.');
+      const parent = await db.getFirstAsync('SELECT id FROM tasks WHERE id=?', task.id);
+      if (!parent) throw new Error('This task no longer exists.');
+      const position = await db.getFirstAsync('SELECT COALESCE(MAX(position),-1)+1 AS nextPosition FROM taskChecklist WHERE taskId=?', task.id);
+      await db.runAsync('INSERT INTO taskChecklist (taskId,text,position,completed) VALUES (?,?,?,0)',
+        task.id, text, Number(position?.nextPosition || 0));
+      setForm(current => ({ ...current, [key]: '' }));
+      changed();
+    } catch (error) { showError(error); }
+  };
+  const toggleChecklistItem = async (item) => {
+    try {
+      await db.runAsync('UPDATE taskChecklist SET completed=? WHERE id=?', item.completed ? 0 : 1, item.id);
+      changed();
+    } catch (error) { showError(error); }
   };
   const saveProfile = async () => {
     try { await db.runAsync('UPDATE profile SET displayName=?,program=?,yearSection=?,updatedAt=? WHERE id=?',(form.displayName??data.profile.displayName??'').trim(),(form.program??data.profile.program??'').trim(),(form.yearSection??data.profile.yearSection??'').trim(),new Date().toISOString(),'local'); resetForm(); changed(); Alert.alert('Saved','Your profile is stored only on this device.'); }
@@ -438,8 +493,8 @@ export default function App() {
       );
     } catch (error) { showError(error); }
   };
-  const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{if(table==='savingsGoals'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM savingsEntries WHERE goalId=?',id);await db.runAsync('DELETE FROM savingsGoals WHERE id=?',id);});}else{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);}changed();}catch(e){showError(e);}}}]);
-  const toggleTask = async (task) => { await db.runAsync('UPDATE tasks SET completed=?,updatedAt=? WHERE id=?',task.completed?0:1,new Date().toISOString(),task.id); changed(); };
+  const remove = async (table,id) => Alert.alert('Delete record?','This cannot be undone.',[{text:'Cancel',style:'cancel'},{text:'Delete',style:'destructive',onPress:async()=>{try{if(table==='savingsGoals'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM savingsEntries WHERE goalId=?',id);await db.runAsync('DELETE FROM savingsGoals WHERE id=?',id);});}else if(table==='tasks'){await db.withTransactionAsync(async()=>{await db.runAsync('DELETE FROM taskChecklist WHERE taskId=?',id);await db.runAsync('DELETE FROM tasks WHERE id=?',id);});}else{await db.runAsync('DELETE FROM '+table+' WHERE id=?',id);}changed();}catch(e){showError(e);}}}]);
+  const toggleTask = async (task) => { try { await db.runAsync('UPDATE tasks SET completed=?,updatedAt=? WHERE id=?',task.completed?0:1,new Date().toISOString(),task.id); changed(); } catch (error) { showError(error); } };
 
   const renderHome = () => <><Heading detail={DAYS[new Date().getDay()]+' · '+todayKey()}>{data.profile.displayName ? 'Welcome back, '+data.profile.displayName : 'Your day, organized.'}</Heading>
     {(data.profile.program||data.profile.yearSection)?<Text style={[styles.profileLine,{color:ACTIVE_COLORS.muted}]}>{[data.profile.program,data.profile.yearSection].filter(Boolean).join(' · ')}</Text>:null}
@@ -644,8 +699,74 @@ export default function App() {
       <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Notes are stored in the local SQLite database and remain available offline.</Text>
     </>;
   };
-  const renderTasks = () => <><Heading detail="Assignments, deadlines, and priorities.">Tasks</Heading><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Add a task</Text><Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)}/><Field label="Due date (YYYY-MM-DD, optional)" value={form.dueDate||''} onChangeText={v=>updateForm('dueDate',v)}/><Field label="Priority (Low / Normal / High)" value={form.priority||'Normal'} onChangeText={v=>updateForm('priority',v)}/><Button title="Add task" onPress={addTask}/></Card><Card><Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Your tasks</Text>{data.tasks.map(x=><View key={x.id} style={styles.taskRow}><Pressable onPress={()=>toggleTask(x)} style={[styles.check,x.completed&&styles.checked,x.completed&&{backgroundColor:ACTIVE_COLORS.forest,borderColor:ACTIVE_COLORS.forest}]}><Text style={styles.checkText}>{x.completed?'✓':''}</Text></Pressable><View style={styles.itemText}><Text style={[styles.itemTitle,x.completed&&styles.done]}>{x.title}</Text><Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{x.dueDate?'Due '+x.dueDate:'No due date'} · {x.priority}</Text></View><Pressable onPress={()=>remove('tasks',x.id)}><Trash2 size={17} color={ACTIVE_COLORS.red}/></Pressable></View>)}{!data.tasks.length?<Empty text="No tasks yet."/>:null}</Card></>;
-
+  const renderTasks = () => {
+    const visibleTasks = filterNativeTasks(data.tasks, taskView, taskSearch, todayKey());
+    const subjectCode = id => data.subjects.find(subject => subject.id === id)?.code || '';
+    return <>
+      <Heading detail="Assignments, due dates, priorities, and step-by-step checklists.">Tasks</Heading>
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>{form.taskId?'Edit task':'New task'}</Text>
+        <Field label="Task title" value={form.taskTitle||''} onChangeText={v=>updateForm('taskTitle',v)} placeholder="Assignment, exam, project…"/>
+        <Field label="Description (optional)" value={form.taskDescription||''} onChangeText={v=>updateForm('taskDescription',v)} multiline placeholder="Add details or instructions…"/>
+        <Field label="Due date (YYYY-MM-DD, optional)" value={form.taskDueDate||''} onChangeText={v=>updateForm('taskDueDate',v)} placeholder="YYYY-MM-DD"/>
+        <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Priority</Text>
+        <View style={styles.budgetActionRow}>
+          {['Low','Normal','High'].map(priority=><Button key={priority} compact secondary={(form.taskPriority||'Normal')!==priority} title={priority} onPress={()=>updateForm('taskPriority',priority)}/>)}
+        </View>
+        <Text style={[styles.label,{color:ACTIVE_COLORS.muted}]}>Subject (optional)</Text>
+        <View style={styles.budgetActionRow}>
+          <Button compact secondary={Boolean(form.taskSubjectId)} title="No subject" onPress={()=>updateForm('taskSubjectId','')}/>
+          {data.subjects.map(subject=><Button key={subject.id} compact secondary={String(form.taskSubjectId||'')!==String(subject.id)} title={subject.code} onPress={()=>updateForm('taskSubjectId',String(subject.id))}/>)}
+        </View>
+        <Button title={form.taskId?'Save task changes':'Add task'} onPress={saveTask}/>
+        {form.taskId?<Button secondary title="Cancel editing" onPress={resetForm}/>:null}
+      </Card>
+      <Card>
+        <Text style={[styles.cardTitle,{color:ACTIVE_COLORS.ink}]}>Your tasks · {visibleTasks.length}</Text>
+        <Field label="Search tasks" value={taskSearch} onChangeText={setTaskSearch} placeholder="Search titles and descriptions"/>
+        <View style={styles.budgetActionRow}>
+          {['pending','overdue','completed','all'].map(view=><Button key={view} compact secondary={taskView!==view} title={view==='all'?'All':view[0].toUpperCase()+view.slice(1)} onPress={()=>setTaskView(view)}/>)}
+        </View>
+        {visibleTasks.map(task=>{
+          const items=data.taskChecklist.filter(item=>item.taskId===task.id);
+          const doneCount=items.filter(item=>Boolean(item.completed)).length;
+          const expanded=expandedTaskId===task.id;
+          return <View key={task.id} style={styles.taskCard}>
+            <View style={styles.taskRow}>
+              <Pressable accessibilityRole="checkbox" accessibilityLabel={task.completed?'Mark '+task.title+' pending':'Mark '+task.title+' complete'} accessibilityState={{checked:Boolean(task.completed)}} onPress={()=>toggleTask(task)} style={[styles.check,task.completed&&styles.checked,task.completed&&{backgroundColor:ACTIVE_COLORS.forest,borderColor:ACTIVE_COLORS.forest}]}>
+                <Text style={styles.checkText}>{task.completed?'✓':''}</Text>
+              </Pressable>
+              <View style={styles.itemText}>
+                <Text style={[styles.itemTitle,{color:ACTIVE_COLORS.ink},task.completed&&styles.done]}>{task.title}</Text>
+                <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>{task.dueDate?'Due '+task.dueDate:'No due date'}{task.subjectId&&subjectCode(task.subjectId)?' · '+subjectCode(task.subjectId):''} · {task.priority||'Normal'} priority</Text>
+              </View>
+              <Button compact secondary title="Edit" onPress={()=>startEditTask(task)}/>
+              <Button compact secondary danger title="Delete" onPress={()=>remove('tasks',task.id)}/>
+            </View>
+            {task.description?<Text style={[styles.taskDescription,{color:ACTIVE_COLORS.muted}]}>{task.description}</Text>:null}
+            <View style={styles.rowBetween}>
+              <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Checklist · {doneCount}/{items.length}</Text>
+              <Button compact secondary title={expanded?'Hide checklist':'Open checklist'} onPress={()=>setExpandedTaskId(expanded?null:task.id)}/>
+            </View>
+            {expanded?<View style={styles.checklistPanel}>
+              {items.map(item=><View key={item.id} style={styles.checklistRow}>
+                <Pressable accessibilityRole="checkbox" accessibilityLabel={item.text} accessibilityState={{checked:Boolean(item.completed)}} onPress={()=>toggleChecklistItem(item)} style={[styles.check,Boolean(item.completed)&&styles.checked,Boolean(item.completed)&&{backgroundColor:ACTIVE_COLORS.forest,borderColor:ACTIVE_COLORS.forest}]}>
+                  <Text style={styles.checkText}>{item.completed?'✓':''}</Text>
+                </Pressable>
+                <Text style={[styles.itemText,{color:ACTIVE_COLORS.ink},Boolean(item.completed)&&styles.done]}>{item.text}</Text>
+                <Button compact secondary danger title="Remove" onPress={()=>remove('taskChecklist',item.id)}/>
+              </View>)}
+              <Field label="New checklist item" value={form['checklist_'+task.id]||''} onChangeText={v=>updateForm('checklist_'+task.id,v)} placeholder="Break the task into a step…"/>
+              <Button secondary title="Add checklist item" onPress={()=>addChecklistItem(task)}/>
+              {!items.length?<Empty text="No checklist items. Add steps to track progress."/>:null}
+            </View>:null}
+          </View>;
+        })}
+        {!visibleTasks.length?<Empty text={taskSearch?'No tasks match your search.':taskView==='overdue'?'No overdue tasks.':'No tasks in this view.'}/>:null}
+      </Card>
+      <Text style={[styles.itemDetail,{color:ACTIVE_COLORS.muted}]}>Tasks and checklist progress are saved locally and work offline.</Text>
+    </>;
+  };
   const saveAppearancePreference = async (id) => {
     if (!Object.prototype.hasOwnProperty.call(THEMES, id)) return;
     try {
@@ -737,6 +858,6 @@ const styles=StyleSheet.create({
   field:{gap:5},input:{minHeight:44,borderWidth:1,borderColor:COLORS.line,borderRadius:12,paddingHorizontal:12,paddingVertical:9,color:COLORS.ink,backgroundColor:'#fff',fontSize:14},multiline:{minHeight:90,textAlignVertical:'top'},button:{minHeight:46,backgroundColor:COLORS.forest,borderRadius:13,alignItems:'center',justifyContent:'center',paddingHorizontal:14,marginTop:3},buttonText:{color:'#fff',fontWeight:'800',fontSize:14},buttonSecondary:{backgroundColor:'#edf4ef',borderWidth:1,borderColor:'#d8e8dd'},buttonSecondaryText:{color:COLORS.forest},buttonDanger:{backgroundColor:'#fff1f0'},buttonDangerText:{color:COLORS.red},buttonCompact:{minHeight:36},
   modulePreference:{flexDirection:'row',alignItems:'center',gap:8,paddingVertical:9,borderTopWidth:1,borderTopColor:COLORS.line},moduleMove:{flexDirection:'row',gap:6,paddingHorizontal:2},moduleMoveButton:{width:32,height:32,borderWidth:1,borderColor:COLORS.line,borderRadius:9,alignItems:'center',justifyContent:'center'},moduleMoveDisabled:{opacity:0.25},moduleMoveText:{fontSize:19,fontWeight:'800',paddingHorizontal:3},disabledText:{opacity:0.25},
   themeOption:{flexDirection:'row',alignItems:'center',gap:12,borderWidth:1.5,borderRadius:15,padding:12},themeSwatches:{flexDirection:'row',gap:4},themeSwatch:{width:17,height:34,borderRadius:6},themeRadio:{width:20,height:20,borderRadius:10,borderWidth:2,alignItems:'center',justifyContent:'center'},themeRadioSelected:{width:10,height:10,borderRadius:5},
-  budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},noteRow:{gap:9,paddingVertical:11,borderTopWidth:1,borderTopColor:COLORS.line},noteBody:{fontSize:13,lineHeight:20},
+  budgetActionRow:{flexDirection:'row',flexWrap:'wrap',gap:7},rowBetween:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:8},limitRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},goalRow:{gap:8,paddingVertical:8,borderTopWidth:1,borderTopColor:COLORS.line},progressTrack:{height:8,borderRadius:8,overflow:'hidden'},progressFill:{height:8,borderRadius:8},noteRow:{gap:9,paddingVertical:11,borderTopWidth:1,borderTopColor:COLORS.line},noteBody:{fontSize:13,lineHeight:20},taskCard:{gap:10,paddingVertical:12,borderTopWidth:1,borderTopColor:COLORS.line},taskDescription:{fontSize:13,lineHeight:19},checklistPanel:{gap:8,paddingLeft:8},checklistRow:{flexDirection:'row',alignItems:'center',gap:8},
   item:{flexDirection:'row',alignItems:'center',paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed',gap:9},itemText:{flex:1},itemTitle:{fontSize:14,fontWeight:'700',color:COLORS.ink},itemDetail:{fontSize:11,color:COLORS.muted,marginTop:3},trailing:{fontSize:12,fontWeight:'800',color:COLORS.forest},delete:{padding:5},empty:{fontSize:12,color:COLORS.muted,paddingVertical:12},taskRow:{flexDirection:'row',alignItems:'center',gap:10,paddingVertical:10,borderTopWidth:1,borderTopColor:'#f0f1ed'},check:{width:23,height:23,borderWidth:1.5,borderColor:'#b8c7bd',borderRadius:7,alignItems:'center',justifyContent:'center'},checked:{backgroundColor:COLORS.forest,borderColor:COLORS.forest},checkText:{color:'#fff',fontWeight:'900'},done:{textDecorationLine:'line-through',color:'#9aa39b'},switchRow:{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingVertical:7},nav:{flexDirection:'row',backgroundColor:'#fff',borderTopWidth:1,borderTopColor:COLORS.line,paddingTop:7,paddingBottom:Platform.OS==='android'?7:3,paddingHorizontal:2},navItem:{flex:1,alignItems:'center',justifyContent:'center',gap:3,paddingVertical:4,borderRadius:10},navActive:{backgroundColor:'#edf4ef'},navLabel:{fontSize:9,color:'#89948c',fontWeight:'600'},navLabelActive:{color:COLORS.forest,fontWeight:'900'}
 });

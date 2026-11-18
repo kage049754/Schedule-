@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes } from '../src-native/domain.js';
+import { parseMoneyToCentavos, parseTimeToMinutes, hasTimeConflict, getAllowanceRange, calculateAvailableBalance, normalizeActivityInput, isValidDateKey, budgetDateRange, calculateFinanceSummary, calculateCategoryUsage, calculateSavingsBalance, validateSavingsWithdrawal, summarizeBudgetTransactions, normalizeNativeNote, filterNativeNotes, normalizeNativeTask, filterNativeTasks } from '../src-native/domain.js';
 
 test('money is stored as integer centavos', () => {
   assert.equal(parseMoneyToCentavos('205'), 20500);
@@ -119,4 +119,31 @@ test('native note search, kind filters, archive state, and pinned ordering work 
   assert.deepEqual(filterNativeNotes(notes, '', 'lecture').map(note => note.id), [1]);
   assert.deepEqual(filterNativeNotes(notes, '', 'all', true).map(note => note.id), [3]);
   assert.deepEqual(filterNativeNotes(notes, 'missing').map(note => note.id), []);
+});
+
+test('native task validation normalizes descriptions, subject links, priorities, and optional dates', () => {
+  assert.deepEqual(normalizeNativeTask({
+    title: '  Submit project  ', description: '  Include the prototype  ',
+    subjectId: '3', dueDate: '2026-11-25', priority: 'high',
+  }), {
+    title: 'Submit project', description: 'Include the prototype',
+    subjectId: 3, dueDate: '2026-11-25', priority: 'High',
+  });
+  assert.equal(normalizeNativeTask({ title: 'Exam' }).priority, 'Normal');
+  assert.throws(() => normalizeNativeTask({ title: ' ' }), /task title/);
+  assert.throws(() => normalizeNativeTask({ title: 'Exam', dueDate: '2026-02-30' }), /valid due date/);
+  assert.throws(() => normalizeNativeTask({ title: 'Exam', subjectId: 'bad' }), /valid subject/);
+});
+
+test('native task views filter pending, completed, and overdue items and sort due dates and priority', () => {
+  const tasks = [
+    { id: 1, title: 'Read chapter', description: 'HCI', dueDate: '2026-11-20', priority: 'Normal', completed: 0 },
+    { id: 2, title: 'Submit lab', description: 'Database', dueDate: '2026-11-17', priority: 'High', completed: 0 },
+    { id: 3, title: 'Another lab', description: 'Network', dueDate: '2026-11-17', priority: 'Low', completed: 0 },
+    { id: 4, title: 'Old task', description: 'Finished work', dueDate: '2026-11-10', priority: 'Low', completed: 1 },
+  ];
+  assert.deepEqual(filterNativeTasks(tasks, 'pending', '', '2026-11-18').map(task => task.id), [2, 3, 1]);
+  assert.deepEqual(filterNativeTasks(tasks, 'overdue', '', '2026-11-18').map(task => task.id), [2, 3]);
+  assert.deepEqual(filterNativeTasks(tasks, 'completed', 'finished', '2026-11-18').map(task => task.id), [4]);
+  assert.deepEqual(filterNativeTasks(tasks, 'all', 'database', '2026-11-18').map(task => task.id), [2]);
 });
